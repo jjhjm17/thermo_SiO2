@@ -1,4 +1,3 @@
-# hello-world
-learn git
+# thermo_SiO2
 
-I am a git learner.
+Functions for the calculation of amorphous and mesoporous SiO2
