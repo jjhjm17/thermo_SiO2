@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+# *.py[cod]
+# *$py.class
+
+# Editor backup files
+*~
+
+# Vim swap files:
+.*.sw?

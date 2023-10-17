@@ -1,0 +1,3 @@
+#!/bin/bash
+python3 -u -m thermo_SiO2.mlip.view_SiO2 $1
+exit
