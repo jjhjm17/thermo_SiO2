@@ -47,4 +47,3 @@ def set_actual_atom_symbols(atoms, atom_symbol_tuple):
         atom_type = atom_types[index]  # 1, 2, ... to Si, O, ..
         atoms[index].symbol = atom_symbol_tuple[atom_type]
     return atoms
-
