@@ -6,7 +6,7 @@ from ase.visualize import view
 # from .view_SiO2_mlip  import view_SiO2_mlip
 # from .view_SiO2_lammps import view_SiO2_lammps
 # from .view_SiO2_lammps_dump import view_SiO2_lammps_dump
-from .read_mlip_cfg import read_mlip_cfg_positions
+from .read_mlip_cfg import read_mlip_cfg_positions, read_mlip_cfg_mlippy
 from ..util.SiO2_parameter import (Si_O_H_Al_atom_symbol_tuple_mlip,
         Si_O_H_Al_atom_symbol_tuple_lammps)
 
@@ -28,7 +28,9 @@ def view_SiO2():
 
     if '.cfg' in file:
         # configs: configurations
-        configs = read_mlip_cfg_positions(file,
+        # configs = read_mlip_cfg_positions(file,
+        #         atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
+        configs = read_mlip_cfg_mlippy(file,
                 atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
     elif 'dump' in file:
         configs = read(file, format='lammps-dump-text', index=':')
@@ -50,5 +52,4 @@ def view_SiO2():
     view(configs)
 
 if __name__ == '__main__':
-    # view_SiO2(sys.argv[1])
     view_SiO2()

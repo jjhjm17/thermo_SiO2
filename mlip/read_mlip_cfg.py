@@ -145,6 +145,15 @@ def read_mlip_cfg_positions(filename, atom_symbol_tuple={0: 'X'}):
     return atoms_list
 
 
+def read_mlip_cfg_mlippy(filename, atom_symbol_tuple={0: 'X'}):
+    """This function reads mlip cfg file and change symbols using
+    atom_symbol_tuple. This one uses the mlippy package."""
+    config_list = ase_loadcfgs(filename)
+    # print(config_list[0].forces)
+    print(config_list[0].get_forces())
+    return config_list
+
+
 def set_atom_symbol(configs, atom_symbol_tuple):
     """This function changes atom atom type (0, 1, 2, .., or 1, 2, 3, ...) to 
     symbols using atom_symbol_tuple."""
