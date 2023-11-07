@@ -150,7 +150,7 @@ def read_mlip_cfg_mlippy(filename, atom_symbol_tuple={0: 'X'}):
     atom_symbol_tuple. This one uses the mlippy package."""
     config_list = ase_loadcfgs(filename)
     # print(config_list[0].forces)
-    print(config_list[0].get_forces())
+    # print(config_list[0].get_forces())
     return config_list
 
 
