@@ -1,14 +1,16 @@
-#!/usr/bin/env python3
+"""This module has functions for viewing SiO2 configuration files, after 
+changing the atom index to correct types of Si, O, ..."""
 
-import sys
 import argparse
 from ase.visualize import view
+from ase.io import read
 # from .view_SiO2_mlip  import view_SiO2_mlip
 # from .view_SiO2_lammps import view_SiO2_lammps
 # from .view_SiO2_lammps_dump import view_SiO2_lammps_dump
-from .read_mlip_cfg import read_mlip_cfg_positions, read_mlip_cfg_mlippy
+from .read_mlip_cfg import read_mlip_cfg_positions  #, read_mlip_cfg_mlippy
 from ..util.SiO2_parameter import (Si_O_H_Al_atom_symbol_tuple_mlip,
         Si_O_H_Al_atom_symbol_tuple_lammps)
+from ..util.util import set_actual_atom_symbols
 
 
 def view_SiO2():
@@ -28,10 +30,10 @@ def view_SiO2():
 
     if '.cfg' in file:
         # configs: configurations
-        # configs = read_mlip_cfg_positions(file,
-        #         atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
-        configs = read_mlip_cfg_mlippy(file,
+        configs = read_mlip_cfg_positions(file,
                 atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
+        # configs = read_mlip_cfg_mlippy(file,
+        #         atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
     elif 'dump' in file:
         configs = read(file, format='lammps-dump-text', index=':')
         for config in configs:
