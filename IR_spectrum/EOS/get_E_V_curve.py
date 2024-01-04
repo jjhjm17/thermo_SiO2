@@ -3,53 +3,99 @@
 
 import os
 import sys
+import shutil
 import numpy as np
+
 # from python_fit.fitToEOS import fitToEOS
-from a_parameters import (calculation_folder as calc_folder,
-                          unitcell_structure, num_samples)
-from ...util.util import read_output
-from .make_folder import get_alat_range, get_sample_folder_name
+from a_parameters import (
+    calculation_folder as calc_folder,
+    unitcell_structure,
+    num_samples,
+)
+from ...util.util import read_output, shell
+from .prepare_for_given_vol_relax import get_sample_folder_name
+from .prepare_for_many_vol import get_alat_range
+from .get_eq_density_SiO2 import get_eq_density_SiO2
 
 
 def get_E_V_curve():
     """This function obtains E-V curve."""
+    root_folder = os.path.abspath('.')
 
-    if os.path.exists('E_V_input'):
-        print('The existing E_V_input file is removed.')
-        os.remove('E_V_input')
-    os.chdir(calc_folder)
+    alats, approx_eq_config, __ = get_alat_range(template_folder="./template")
+    os.chdir(f"{calc_folder}/b_many_vols")
 
-    alats, approx_eq_config = get_alat_range()
     num_atoms = len(approx_eq_config)
 
     for i_sample in range(num_samples):  # i_sample: index of sample
         V_per_atom = []
         E_per_atom = []
         sample_folder = get_sample_folder_name(i_sample)
-        print(f'\n\n{sample_folder}')
+        print(f"\n\n{sample_folder}")
+
         os.chdir(sample_folder)
+        if os.path.exists("E_V_input"):
+            print("The existing E_V_input file is removed.")
+            os.remove("E_V_input")
 
         for alat in alats:
             # i_; index
             # struct_str = '{:03d}'.format(alat)    # string, padded with 0
-            struct_str = f'{alat}Ang'    # string, padded with 0
+            struct_str = f"{alat}Ang"  # string, padded with 0
             folder = struct_str
             # print('directory = ', folder)
             os.chdir(folder)
 
-            if unitcell_structure != 'amorphous_cubic':
-                print("Error: for now only unitcell_structure = 'amorphous_cubic' is"
-                      " supported.")
+            if unitcell_structure != "amorphous_cubic":
+                print(
+                    "Error: for now only unitcell_structure = 'amorphous_cubic' is"
+                    " supported."
+                )
                 sys.exit()
 
             V_per_atom.append(alat**3 / num_atoms)  # Ang^3/atom
-            E_per_atom.append( float(read_output('tail -n1 OSZICAR').split()[4])
-                              / num_atoms)
 
-            os.chdir('..')
-        np.savetxt('E_V_input', np.column_stack((V_per_atom, E_per_atom)),
-                   fmt='%.16g', header='volume (Ang^3/atom)  energy (eV/atom)')
+            # debug
+            # E_per_atom.append( float(read_output('tail -n1 OSZICAR').split()[4])
+            #                   / num_atoms)
+            E_per_atom.append(
+                float(read_output("grep E0 *out | tail -n1 ").split()[4]) / num_atoms
+            )
+
+            os.chdir("..")
+        np.savetxt(
+            "E_V_input",
+            np.column_stack((V_per_atom, E_per_atom)),
+            fmt="%.16g",
+            header="volume (Ang^3/atom)  energy (eV/atom)",
+        )
+        os.chdir("..")
+    os.chdir("../..")
+    print("File written: E_V_input")
+
+    # Fitting
+    result_folder = f'{calc_folder}_result'
+    if not os.path.exists(result_folder):
+        os.mkdir(result_folder)
+    os.chdir(result_folder)
+
+    for i_sample in range(num_samples):  # i_sample: index of sample
+        sample_folder = get_sample_folder_name(i_sample)
+        print(f'\n\n{sample_folder}')
+        if not os.path.exists(sample_folder):
+            os.mkdir(sample_folder)
+        os.chdir(sample_folder)
+
+        shutil.move(f'{root_folder}/{calc_folder}/b_many_vols/{sample_folder}/E_V_input',
+                '.')
+        shell(
+            "~/Thermodynamics/getE0KFit.sh -u 'Ang^3:eV' -s 'sc' -i ./E_V_input | tee ./E_V_input_getE0KFit.out"
+        )
+        # u: unit, sc: simple cubic
+        get_eq_density_SiO2('EVinet', approx_eq_config)
+
         os.chdir('..')
+
     os.chdir('..')
 
     # fitToEOS(volumeUnit='Ang^3', energyUnit='eV', file='E_V_input',
@@ -58,9 +104,7 @@ def get_E_V_curve():
     #     $Bmax*1., $BderDef*1., $BderMin*1.,
     #     $BderMax*1., $mesh)
 
-    print('File written: E_V_input')
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     get_E_V_curve()

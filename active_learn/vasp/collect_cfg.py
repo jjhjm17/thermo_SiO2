@@ -27,7 +27,7 @@ def collect_cfg():
     for i_structure in range( len( atoms_and_forces)):
         # i_; index
         # struct_str = '{:03d}'.format(i_structure)    # string, padded with 0
-        struct_str = f'{i_structure:03d}'    # string, padded with 0
+        struct_str = f'{i_structure:04d}'    # string, padded with 0
         folder = struct_str
         print(f'directory = {folder}   ', end='')
 

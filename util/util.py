@@ -1,6 +1,6 @@
 """This file contains useful utility functions."""
 import os
-# import sys
+import sys
 import shutil
 import subprocess as sub
 from datetime import datetime
@@ -47,3 +47,14 @@ def set_actual_atom_symbols(atoms, atom_symbol_tuple):
         atom_type = atom_types[index]  # 1, 2, ... to Si, O, ..
         atoms[index].symbol = atom_symbol_tuple[atom_type]
     return atoms
+
+
+def check_link_symlink(src, dst):
+    """This function checks if a symlink is good (not broken). Then make
+    the symlink. src: source, dst: destination"""
+    if not os.path.exists(os.path.realpath(src)):
+        # realpath: Follow symlink recursively.
+        print(f'\n Error: broken symlink at {src}')
+        sys.exit()
+    else:
+        os.symlink(src, dst)

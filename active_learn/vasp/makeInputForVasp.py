@@ -4,18 +4,19 @@
 import os
 import sys
 import shutil
-import subprocess 
-import numpy as np
+import subprocess
 import ase
 # from mlippy.atms import ase_loadcfgs
 from ...mlip.read_mlip_cfg import read_mlip_cfg
 # from ...mlip.read_mlip_cfg import set_atom_symbol
 from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_mlip
 from parameters import mlip_cfg_file, calc_folder
+import parameters
+
 
 def makeInputForVasp():
     # overwrite directories and files
-    # overwrite = True  # debug
+    # overwrite = True  # debug, be very careful!
     overwrite = False
 
     # for debugging
@@ -35,9 +36,13 @@ def makeInputForVasp():
     os.chdir(calc_folder)
 
     for i_structure, this_atoms_and_forces in enumerate(atoms_and_forces):
+        if hasattr(parameters, 'start_config_number'):
+            if (i_structure < parameters.start_config_number) or (
+                    i_structure > parameters.end_config_number):
+                continue
         # i_; index
         # snapshot = ase.io.read('config_step_0.cfg')
-        struct_str = '{:03d}'.format(i_structure)    # string, padded with 0
+        struct_str = '{:04d}'.format(i_structure)    # string, padded with 0
         snapshot = this_atoms_and_forces['atoms']
 
         folder = struct_str
@@ -79,7 +84,9 @@ def makeInputForVasp():
         #             fout.write(line.replace('xxxNBANDSxxx',
         #                 f'{NBANDS}  # NELECT = {NELECT}, NIONS = {num_atoms}'))
         shutil.copy('../../template/INCAR', '.')
-        shutil.copy('../../template/INCAR.preconverge.change', '.')
+        if (hasattr(parameters, 'preconverge') and parameters.preconverge ==
+                True):
+            shutil.copy('../../template/INCAR.preconverge.change', '.')
         shutil.copy('../../template/KPOINTS', '.')
         os.symlink('../../template/POTCAR', 'POTCAR')
         os.symlink('../../template/vdw_kernel.bindat', 'vdw_kernel.bindat')

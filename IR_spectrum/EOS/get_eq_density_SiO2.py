@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """This script obtains the density of the equilibrium structure from the energy volume curve."""
 import numpy as np
-from ase.io import read
 
 
-def get_eq_density():
+def get_eq_density_SiO2(EVinet_path, approx_eq_config):
     """This function obtains equilibrium density."""
-    eq_vol = np.loadtxt('EVinet')[1]  # Ang3/atom
+    eq_vol = np.loadtxt(EVinet_path)[1]  # Ang3/atom
     # eq_vol = 14.492
-    print(f'equilibrium volume of Vinet curve = {eq_vol:.5g} Ang^3/atom')
-    approx_eq_config = read('./template/POSCAR')
+    # print(f'equilibrium volume of Vinet curve = {eq_vol:.5g} Ang^3/atom')
     formula = approx_eq_config.get_chemical_formula(empirical=True)
     if formula != 'O2Si':
         print('Error: please implement for non SiO2 structure.')
@@ -22,7 +20,3 @@ def get_eq_density():
     # You have: amu/(angstrom^3)
     # You want: g/(cm)^3
     print(f'density = {density:.5g} g/cm^3')
-
-
-if __name__ == '__main__':
-    get_eq_density()
