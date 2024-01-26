@@ -3,11 +3,13 @@
 
 import os
 import sys
-from parameters import mlip_cfg_file, calc_folder, output_file
-from ...util.util import shell
+from time import sleep
+from parameters import (mlip_cfg_file, calc_folder, output_file, mlip_version)
+from ...util.util import shell, read_output
 from ...mlip.read_mlip_cfg import read_mlip_cfg
 # from ...mlip.read_mlip_cfg import set_atom_symbol
 from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_mlip
+
 
 def collect_cfg():
     """This function collects calculated configurations."""
@@ -24,16 +26,40 @@ def collect_cfg():
 
     os.chdir(calc_folder)
 
+
     for i_structure in range( len( atoms_and_forces)):
         # i_; index
         # struct_str = '{:03d}'.format(i_structure)    # string, padded with 0
         struct_str = f'{i_structure:04d}'    # string, padded with 0
         folder = struct_str
+
+        if i_structure == 0:
+            ISMEAR = int(read_output(f"grep 'ISMEAR =' {folder}/OUTCAR").split(sep=';')[0].split(sep='=')[1])
+            if ISMEAR == 0:  # Gaussian
+                # 'mlp_par_fits_to_energy_based_on_ismear' is usually 
+                # used for reading energy. For MP smearing,
+                # read E0. For the Gaussian smearing, read F.
+                # For the Gaussian smearing, we use mlp for speed.
+                mlp_binary = 'mlp'
+            else:
+                mlp_binary = 'mlp_par_fits_to_energy_based_on_ismear'
+            print(f'{ISMEAR = }, {mlp_binary = }')
+            sleep(5)  # sec
+
         print(f'directory = {folder}   ', end='')
 
         os.chdir(folder)
-        shell(f'mlp3ser convert OUTCAR ../../{output_file} --append '
-            '--input_format=outcar')
+
+
+        if mlip_version == 2:
+            shell(f'{mlp_binary} '
+                f'convert-cfg OUTCAR ../../{output_file} --append '
+                '--input-format=vasp-outcar')
+        else:
+            print('Error: mlip_version is not supported.')
+            sys.exit()
+        # shell(f'mlp3ser convert OUTCAR ../../{output_file} --append '
+        #     '--input_format=outcar')
         os.chdir('..')
     os.chdir('..')
 

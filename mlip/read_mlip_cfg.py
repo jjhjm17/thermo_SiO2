@@ -7,10 +7,12 @@ from ase.io import write
 from mlippy.atms import ase_loadcfgs
 from ..util.SiO2_parameter import (atomic_symbol_to_number,
         atomic_number_to_POTCAR_order)
+from .read_config import sort_config_by_POTCAR_order
 
 
 # VERBOSE = True  # debug
 VERBOSE = False
+
 
 def read_mlip_cfg(filename, atom_symbol_tuple={0: 'X'},
         sort_method=False):
@@ -106,14 +108,16 @@ def read_mlip_cfg(filename, atom_symbol_tuple={0: 'X'},
                 config = config[sort_index]
                 forces = forces[sort_index]
             elif sort_method == 'POTCAR_order':
-                # atomic_numbers = config.get_atomic_numbers()
-                number_to_sort = [atomic_number_to_POTCAR_order[atomic_number]
-                        for atomic_number in config.get_atomic_numbers()]
-                # number_to_sort = np.zeroes(len(atomic_numbers))
-                # for index, atomic_number in enumerate(atomic_numbers):
-                #     number_to_sort[index] = atomic_number_to_POTCAR_order[atomic_number]
-                sort_index = np.argsort(number_to_sort)
-                config = config[sort_index]
+                # # atomic_numbers = config.get_atomic_numbers()
+                # number_to_sort = [atomic_number_to_POTCAR_order[atomic_number]
+                #         for atomic_number in config.get_atomic_numbers()]
+                # # number_to_sort = np.zeroes(len(atomic_numbers))
+                # # for index, atomic_number in enumerate(atomic_numbers):
+                # #     number_to_sort[index] = atomic_number_to_POTCAR_order[atomic_number]
+                # sort_index = np.argsort(number_to_sort)
+                # config = config[sort_index]
+                config, sort_index = sort_config_by_POTCAR_order(config,
+                        return_sort_index=True)
                 forces = forces[sort_index]
             atoms_and_forces.append({'atoms': config, 'forces': forces})
             first_line = infile.readline()  # BEGIN_CFG

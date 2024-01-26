@@ -1,22 +1,18 @@
 #!/usr/bin/env python3
-"""This script makes folders for EOS fitting, to run vasp."""
+"""This script makes folders for charge calculation, to run vasp."""
 
 import os
-import sys
 import shutil
-import subprocess
-import numpy as np
-from ase.io import read, write
+from ase.io import read
 from a_parameters import (calculation_folder as calc_folder,
-                          unitcell_structure, use_vdw_kernel_file, num_samples,
-                          min_vol_percent, max_vol_percent,
-                          POSCAR_prefix)
+                          num_samples, use_vdw_kernel_file,
+                          POSCAR_folder)
 from ...util.util import shell
-from .util import get_sample_folder_name
+from ..EOS.util import get_sample_folder_name
 
 
 def make_input_for_vasp():
-    """This function makes input files used by vasp for the EOS calculation."""
+    """This function makes input files used by vasp for the charge calculation."""
 
     # for debugging
     verbose = True
@@ -29,15 +25,6 @@ def make_input_for_vasp():
         os.mkdir(calc_folder)
     os.chdir(calc_folder)
 
-    given_vol_relax_folder = 'a_given_vol_relax'
-    if os.path.exists(given_vol_relax_folder):
-        print(f'Error: folder {given_vol_relax_folder} already exists.')
-        sys.exit()
-    else:
-        os.mkdir(given_vol_relax_folder)
-    os.chdir(given_vol_relax_folder)
-
-
     for i_sample in range(num_samples):  # i_sample: index of sample
         sample_folder = get_sample_folder_name(i_sample)
         print(f'\n\n{sample_folder}')
@@ -45,22 +32,22 @@ def make_input_for_vasp():
             os.mkdir(sample_folder)
         os.chdir(sample_folder)
 
-        root_folder = '../../..'
+        root_folder = '../..'
         template_folder = f'{root_folder}/template'
-        snapshot = read(f'{template_folder}/{POSCAR_prefix}_{i_sample}')
+        shutil.copy(f'{template_folder}/INCAR', '.')
+        POSCAR_file = f'{root_folder}/{POSCAR_folder}/{sample_folder}/POSCAR'
+        snapshot = read(POSCAR_file)
 
         if verbose:
             print('snapshot = ', snapshot)
 
-        write('POSCAR', snapshot, direct=True, vasp5=True)
-        shell(f'cat {template_folder}/INCAR.preconverge.change '
-              f' {template_folder}/INCAR > INCAR')
+        shutil.copy(POSCAR_file, '.')
         shutil.copy(f'{template_folder}/KPOINTS', '.')
         os.symlink(f'{template_folder}/POTCAR', 'POTCAR')
         if use_vdw_kernel_file:
             os.symlink(f'{template_folder}/vdw_kernel.bindat',
                        'vdw_kernel.bindat')
-        subprocess.run(f'pwd >> {root_folder}/jobList', shell=True, check=True)
+        shell(f'pwd >> {root_folder}/jobList')
         os.chdir('..')
 
     os.chdir('..')

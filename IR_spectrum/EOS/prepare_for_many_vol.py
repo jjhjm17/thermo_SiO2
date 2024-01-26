@@ -7,12 +7,36 @@ import shutil
 import subprocess
 import numpy as np
 from ase.io import read, write
-from .prepare_for_given_vol_relax import get_sample_folder_name
+from .util import get_sample_folder_name
 from ...util.util import check_link_symlink
 from a_parameters import (calculation_folder as calc_folder,
                           unitcell_structure, use_vdw_kernel_file, num_samples,
                           min_vol_percent, max_vol_percent, num_samples,
                           POSCAR_prefix)
+
+def get_alat_from_V(volume, unitcell_structure):
+    """This function returns the lattice constant of a supercell from the
+    volume."""
+    if unitcell_structure == 'amorphous_cubic':
+        alat = volume**(1/3)
+    else:
+        print("Error: for now only unitcell_structure = 'amorphous_cubic' is"
+              " supported.")
+        sys.exit()
+    return alat
+
+
+def get_V_from_alat(alat, unitcell_structure):
+    """This function returns the volume of a supercell from the lattice
+    constant."""
+    if unitcell_structure == 'amorphous_cubic':
+        vol = alat**3
+    else:
+        print("Error: for now only unitcell_structure = 'amorphous_cubic' is"
+              " supported.")
+        sys.exit()
+    return vol
+
 
 def get_alat_range(template_folder):
     """This function returns alat range for EOS."""
@@ -39,20 +63,9 @@ def get_alat_range(template_folder):
     approx_eq_alat = round(approx_eq_config.cell.cellpar()[0], digits)
     print(f'{approx_eq_alat = :.6g} Ang')
 
-    if unitcell_structure != 'amorphous_cubic':
-        print("Error: for now only unitcell_structure = 'amorphous_cubic' is"
-              " supported.")
-        sys.exit()
-
-    def get_alat_from_V(volume):
-        return volume**(1/3)
-
-    def get_V_from_alat(alat):
-        return alat**3
-
-    alat_min = round(get_alat_from_V(vol_min_first), digits)
-    alat_delta = round((get_alat_from_V(vol_max_first) - alat_min) /
-                       (num_alats - 1), digits)
+    alat_min = round(get_alat_from_V(vol_min_first, unitcell_structure), digits)
+    alat_delta = round((get_alat_from_V(vol_max_first, unitcell_structure) -
+        alat_min) / (num_alats - 1), digits)
     alat_max = alat_min + alat_delta * (num_alats - 1)
     alat_max_round = round(alat_max, 3)
     if abs(alat_max_round - alat_max) > 1e-6:
@@ -60,8 +73,8 @@ def get_alat_range(template_folder):
         print('Error: the round of alat_max is not good.')
         sys.exit()
     alat_max = alat_max_round
-    vol_min = get_V_from_alat(alat_min)
-    vol_max = get_V_from_alat(alat_max)
+    vol_min = get_V_from_alat(alat_min, unitcell_structure)
+    vol_max = get_V_from_alat(alat_max, unitcell_structure)
 
     print(f'{alat_delta = } Ang')
     print(f'{alat_min = } Ang')

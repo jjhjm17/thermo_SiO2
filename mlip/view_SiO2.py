@@ -8,6 +8,7 @@ from ase.io import read
 # from .view_SiO2_lammps import view_SiO2_lammps
 # from .view_SiO2_lammps_dump import view_SiO2_lammps_dump
 from .read_mlip_cfg import read_mlip_cfg_positions  #, read_mlip_cfg_mlippy
+from .read_config import read_SiO2_dump
 from ..util.SiO2_parameter import (Si_O_H_Al_atom_symbol_tuple_mlip,
         Si_O_H_Al_atom_symbol_tuple_lammps)
 from ..util.util import set_actual_atom_symbols
@@ -35,10 +36,11 @@ def view_SiO2():
         # configs = read_mlip_cfg_mlippy(file,
         #         atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
     elif 'dump' in file:
-        configs = read(file, format='lammps-dump-text', index=':')
-        for config in configs:
-            config = set_actual_atom_symbols(config,
-                    Si_O_H_Al_atom_symbol_tuple_lammps)
+        # configs = read(file, format='lammps-dump-text', index=':')
+        # for config in configs:
+        #     config = set_actual_atom_symbols(config,
+        #             Si_O_H_Al_atom_symbol_tuple_lammps)
+        configs = read_SiO2_dump(file, index=':')
     else:  # lammps-data
         configs = read(file, format='lammps-data', style='atomic')
         configs = set_actual_atom_symbols(configs,
@@ -47,7 +49,8 @@ def view_SiO2():
     if type(configs).__name__ == 'Atoms':
         configs = [configs]
         # If there is one configuration, convert to a list of configs.
-    print(f'{len(configs)} configurations.')
+    print(f'{len(configs)} configuration(s).')
+
     if args.verbose:
         for config in configs:
             print(config)
