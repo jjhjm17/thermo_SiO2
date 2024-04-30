@@ -2,12 +2,15 @@
 """This script creates folders and prepares jobs for the active learning, for
 lammps."""
 import os
+import sys
 import shutil
+# from pathlib import Path
 from ase.visualize import view
 from ase.io import read
 from ...util.util import get_lammps_random_seed, set_actual_atom_symbols
-from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_lammps
-from a_parameters import calc_folder, num_seeds
+from ...util.SiO2_parameter import (Si_O_H_Al_atom_symbol_tuple_lammps,
+                                    Si_O_Al_atom_symbol_tuple_lammps)
+from a_parameters import calc_folder, num_seeds, initial_config, symbols, different_seeds
 
 def create_folders():
     """This function creates folders and prepares jobs."""
@@ -15,10 +18,18 @@ def create_folders():
     if os.path.isfile('jobList'):
         os.remove('jobList')
 
-    structure_file = './hole_datafs/lammps.dataf_0'
+    # structure_file = './hole_datafs/lammps.dataf_0'
+    structure_file = initial_config
     my_atoms = read(structure_file, format='lammps-data', style='atomic')
+    if symbols == 'Si O H Al':
+        atom_symbol_tuple = Si_O_H_Al_atom_symbol_tuple_lammps
+    elif symbols == 'Si O Al':
+        atom_symbol_tuple = Si_O_Al_atom_symbol_tuple_lammps
+    else:
+        print("Error: the 'symbols' variable is not properly set.")
+        sys.exit()
     my_atoms = set_actual_atom_symbols(my_atoms,
-            Si_O_H_Al_atom_symbol_tuple_lammps)
+            atom_symbol_tuple)
     print(my_atoms)
     view(my_atoms)
     print('Please check the structure visually.')
@@ -34,17 +45,20 @@ def create_folders():
         shutil.copytree('../template/0', calc_subfolder, symlinks=True)
         os.chdir(calc_subfolder)
 
-        # with open('in.file', 'r') as fin:
-        #     in_file_lines = fin.readlines()
-        # seed = get_lammps_random_seed()
-        # with open('in.file_new', 'w') as out_file:
-        #     for line in in_file_lines:
-        #         line = line.replace('xxxSEEDxxx', f'{seed}')
-        #         out_file.write(line)
-        # os.remove('in.file')
-        # os.rename('in.file_new', 'in.file')
+        if different_seeds:
+            with open('in.file', 'r') as fin:
+                in_file_lines = fin.readlines()
+            seed = get_lammps_random_seed()
+            with open('in.file_new', 'w') as out_file:
+                for line in in_file_lines:
+                    line = line.replace('xxxSEEDxxx', f'{seed}')
+                    out_file.write(line)
+            os.remove('in.file')
+            os.rename('in.file_new', 'in.file')
 
-        shutil.copy(f'../../hole_datafs/lammps.dataf_{index_seed}',
+        # shutil.copy(f'../../hole_datafs/lammps.dataf_{index_seed}',
+        #         'lammps.dataf')
+        shutil.copy(f'../../{initial_config}',
                 'lammps.dataf')
         with open('../../jobList', 'a') as file:
             file.write(f'{os.getcwd()}\n')

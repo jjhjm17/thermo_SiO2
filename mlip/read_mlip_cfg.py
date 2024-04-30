@@ -71,7 +71,8 @@ def read_mlip_cfg(filename, atom_symbol_tuple={0: 'X'},
                 energy = float(infile.readline().split()[0])
                 if VERBOSE:
                     print('energy =', energy)
-            if infile.readline().split()[0] == 'PlusStress':
+            line_split = infile.readline().split()
+            if (len(line_split) > 0 and  line_split[0] == 'PlusStress'):
                 # infile.readline()  # PlusStress:  xx          yy          zz
                 #          yz          xz          xy
                 stress = np.array(infile.readline().split(), dtype=float)
@@ -93,6 +94,7 @@ def read_mlip_cfg(filename, atom_symbol_tuple={0: 'X'},
             atom_symbol_joined = ''.join(types)
 
             positions = np.array(positions)
+            # print(f'{[vec_a, vec_b, vec_c] =}')
             config = ase.Atoms(atom_symbol_joined, cell=[vec_a, vec_b, vec_c],
                                positions=positions, pbc=True)
 
@@ -153,6 +155,17 @@ def read_mlip_cfg_mlippy(filename, atom_symbol_tuple={0: 'X'}):
     """This function reads mlip cfg file and change symbols using
     atom_symbol_tuple. This one uses the mlippy package."""
     config_list = ase_loadcfgs(filename)
+    if type(config_list[0]) == 'Atom':
+        config_list = [config_list]
+    # print(f'{config_list=}')
+    for config in config_list:
+        atom_numbers = config.get_atomic_numbers()
+        new_atom_symbols = [atom_symbol_tuple[atom_number] for atom_number in
+                            atom_numbers]
+        # new_atom_symbols = []
+        # for ind, atom_number in enumerate(atom_numbers):
+        #     new_atom_symbols.append(atom_symbol_tuple[atom_number])
+        config.set_chemical_symbols(new_atom_symbols)
     # print(config_list[0].forces)
     # print(config_list[0].get_forces())
     return config_list

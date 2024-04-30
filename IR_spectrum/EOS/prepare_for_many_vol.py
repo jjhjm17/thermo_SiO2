@@ -10,8 +10,9 @@ from ase.io import read, write
 from .util import get_sample_folder_name
 from ...util.util import check_link_symlink
 from a_parameters import (calculation_folder as calc_folder,
-                          unitcell_structure, use_vdw_kernel_file, num_samples,
-                          min_vol_percent, max_vol_percent, num_samples,
+                          unitcell_structure, use_vdw_kernel_file,
+                          sample_index_start, sample_index_end,
+                          min_vol_percent, max_vol_percent,
                           POSCAR_prefix)
 
 def get_alat_from_V(volume, unitcell_structure):
@@ -109,7 +110,9 @@ def make_input_for_vasp():
     alats, __, __2 = get_alat_range(template_folder='../../template')
     # __{2}: unused variables
 
-    for i_sample in range(num_samples):  # i_sample: index of sample
+    # for i_sample in range(num_samples):  # i_sample: index of sample
+    for i_sample in range(sample_index_start, sample_index_end + 1):
+        # i_sample: index of sample
         sample_folder = get_sample_folder_name(i_sample)
         print(f'\n\n{sample_folder}')
         if not os.path.exists(sample_folder):

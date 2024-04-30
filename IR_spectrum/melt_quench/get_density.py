@@ -19,14 +19,15 @@ def get_density():
         os.chdir(calc_subfolder)
         num_configs = read_output('grep TIMESTEP dump_atom | wc --line')
         print(f'{calc_subfolder} {num_configs}')
+
+        is it correct to use index 0 at the following line?
+
         config = read('dump_atom', index='0', format='lammps-dump-text')
         for atom in config:
-            if atom.symbol == 'H':  # type 1
+            if atom.symbol == 'H':
                 atom.symbol = 'Si'
-            elif atom.symbol == 'He':  # type 2
+            elif atom.symbol == 'He':
                 atom.symbol = 'O'
-            elif atom.symbol == 'Li':  # type 3
-                atom.symbol = 'Al'
         amu_per_ang_3__to__g_per_cm_3 = 1.6605391
         # units u/angstrom^3 g/cm^3
         density = (np.sum(config.get_masses()) / config.get_volume() *

@@ -4,9 +4,13 @@
 import os
 import sys
 from time import sleep
-from parameters import (mlip_cfg_file, calc_folder, output_file, mlip_version)
+# import numpy as np
+from parameters import (mlip_cfg_file, calc_folder, output_file, mlip_version,
+                        server)
+import parameters
 from ...util.util import shell, read_output
 from ...mlip.read_mlip_cfg import read_mlip_cfg
+# from mlippy.atms import loadcfgs, savecfgs
 # from ...mlip.read_mlip_cfg import set_atom_symbol
 from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_mlip
 
@@ -34,13 +38,17 @@ def collect_cfg():
         folder = struct_str
 
         if i_structure == 0:
-            ISMEAR = int(read_output(f"grep 'ISMEAR =' {folder}/OUTCAR").split(sep=';')[0].split(sep='=')[1])
+            # ISMEAR = int(read_output(f"grep 'ISMEAR =' {folder}/OUTCAR").split(sep=';')[0].split(sep='=')[1])
+            ISMEAR = int(read_output(f"grep 'ISMEAR =    ' {folder}/OUTCAR").split(sep=';')[0].split(sep='=')[1])
             if ISMEAR == 0:  # Gaussian
                 # 'mlp_par_fits_to_energy_based_on_ismear' is usually 
                 # used for reading energy. For MP smearing,
                 # read E0. For the Gaussian smearing, read F.
                 # For the Gaussian smearing, we use mlp for speed.
-                mlp_binary = 'mlp'
+                if server == 'justus':
+                    mlp_binary = 'mlp'
+                elif server == 'fritz':
+                    mlp_binary = 'mlp2ser'
             else:
                 mlp_binary = 'mlp_par_fits_to_energy_based_on_ismear'
             print(f'{ISMEAR = }, {mlp_binary = }')
@@ -68,6 +76,19 @@ def collect_cfg():
             sort_method='POTCAR_order')
     print(f'Total {len(atoms_and_forces_out)} configurations are collected in '
           f'this file: {output_file}')
+
+    # # correct atom type
+    # if (hasattr(parameters, 'atom_symbols_in_cfg') and
+    #     parameters.atom_symbols_in_cfg == 'Si O Al'):
+    #     cfgs = loadcfgs(output_file)
+    #     convert_type = {0:0, 1:1, 2:3}  # Change Al type from 2 to 3.
+    #     for cfg in cfgs:
+    #         print(f'Before, {cfg.types = }')
+    #         cfg.types = np.array([convert_type[atom_type] for atom_type in
+    #                               cfg.types])
+    #         print(f'After, {cfg.types = }')
+    #     os.remove(output_file)
+    #     savecfgs(output_file, cfgs)
 
 if __name__ == '__main__':
     collect_cfg()

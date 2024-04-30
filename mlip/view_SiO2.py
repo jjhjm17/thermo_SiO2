@@ -7,7 +7,7 @@ from ase.io import read
 # from .view_SiO2_mlip  import view_SiO2_mlip
 # from .view_SiO2_lammps import view_SiO2_lammps
 # from .view_SiO2_lammps_dump import view_SiO2_lammps_dump
-from .read_mlip_cfg import read_mlip_cfg_positions  #, read_mlip_cfg_mlippy
+from .read_mlip_cfg import read_mlip_cfg_mlippy
 from .read_config import read_SiO2_dump
 from ..util.SiO2_parameter import (Si_O_H_Al_atom_symbol_tuple_mlip,
         Si_O_H_Al_atom_symbol_tuple_lammps)
@@ -24,17 +24,19 @@ def view_SiO2():
 
     parser = argparse.ArgumentParser(
         description='Shows SiO2 structures in lammps or mlip format.')
-    parser.add_argument('--verbose', '-v', action='store_true')
+    parser.add_argument('--verbose', '-v', action='store_true')  # on/off
+    parser.add_argument('--SiOAl', '-Al', action='store_true',
+                       help='The order of atoms is Si O Al')
     parser.add_argument("file")
     args = parser.parse_args()
     file = args.file
 
     if '.cfg' in file:
         # configs: configurations
-        configs = read_mlip_cfg_positions(file,
-                atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
-        # configs = read_mlip_cfg_mlippy(file,
+        # configs = read_mlip_cfg_positions(file,
         #         atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
+        configs = read_mlip_cfg_mlippy(file,
+                atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
     elif 'dump' in file:
         # configs = read(file, format='lammps-dump-text', index=':')
         # for config in configs:
@@ -42,14 +44,24 @@ def view_SiO2():
         #             Si_O_H_Al_atom_symbol_tuple_lammps)
         configs = read_SiO2_dump(file, index=':')
     else:  # lammps-data
-        configs = read(file, format='lammps-data', style='atomic')
-        configs = set_actual_atom_symbols(configs,
+        config = read(file, format='lammps-data', style='atomic')
+        config = set_actual_atom_symbols(config,
                 Si_O_H_Al_atom_symbol_tuple_lammps)
+        configs = [config]
+
 
     if type(configs).__name__ == 'Atoms':
         configs = [configs]
         # If there is one configuration, convert to a list of configs.
+
+    if args.SiOAl:
+        #                                Si       O      H to Al
+        atomic_number_to_symbol_SiOAl = {14:'Si', 8:'O', 1:'Al'}
+        configs = [set_actual_atom_symbols(config,
+                atomic_number_to_symbol_SiOAl) for config in configs]
+
     print(f'{len(configs)} configuration(s).')
+
 
     if args.verbose:
         for config in configs:

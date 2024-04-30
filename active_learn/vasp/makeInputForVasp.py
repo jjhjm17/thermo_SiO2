@@ -9,23 +9,26 @@ import ase
 # from mlippy.atms import ase_loadcfgs
 from ...mlip.read_mlip_cfg import read_mlip_cfg
 # from ...mlip.read_mlip_cfg import set_atom_symbol
-from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_mlip
+from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_mlip, Si_O_Al_atom_symbol_tuple_mlip
 from parameters import mlip_cfg_file, calc_folder
 import parameters
 
 
 def makeInputForVasp():
     # overwrite directories and files
-    # overwrite = True  # debug, be very careful!
-    overwrite = False
+    overwrite = False  # use only overwrite = False
 
     # for debugging
     verbose = True  
     # verbose = False 
     # atoms = ase_loadcfgs(mlip_cfg_file)
     # set_atom_symbol(atoms, Si_O_H_Al_atom_symbol_tuple_mlip)
+    if hasattr(parameters, 'atom_symbols_in_cfg') and parameters.atom_symbols_in_cfg == 'Si O Al':
+        atom_symbol_tuple = Si_O_Al_atom_symbol_tuple_mlip
+    else:
+        atom_symbol_tuple = Si_O_H_Al_atom_symbol_tuple_mlip
     atoms_and_forces = read_mlip_cfg(mlip_cfg_file,
-            atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip,
+            atom_symbol_tuple=atom_symbol_tuple,
             sort_method='POTCAR_order')
 
     # print(atoms_and_forces[0]['atoms'].get_positions())
@@ -60,8 +63,9 @@ def makeInputForVasp():
             try:
                 os.mkdir(folder) 
             except FileExistsError:
-                print('ERROR: Directory {} already exists. If you want to'.format(folder))
-                print('overwrite it, please set ovewrite = True.')
+                print('ERROR: Directory {} already exists.')
+                # print('ERROR: Directory {} already exists. If you want to'.format(folder))
+                # print('overwrite it, please set overwrite = True.')
                 sys.exit(1)
 
         mkdir_if_overwrite(folder,overwrite)
