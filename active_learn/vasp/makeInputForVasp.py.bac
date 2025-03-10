@@ -8,16 +8,13 @@ import subprocess
 from collections import Counter
 import numpy as np
 import ase
-from ase.io import read
 # from mlippy.atms import ase_loadcfgs
 from ...mlip.read_mlip_cfg import read_mlip_cfg
-from ...mlip.read_config import sort_config_by_POTCAR_order
 # from ...mlip.read_mlip_cfg import set_atom_symbol
-# from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_mlip, Si_O_Al_atom_symbol_tuple_mlip
-from ...util.SiO2_parameter import Atom_order, POTCAR_setup
+from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_mlip, Si_O_Al_atom_symbol_tuple_mlip
 from ...util.util import shell, read_output
 from parameters import calc_folder, atom_symbols_in_output_cfg
-import parameters as param
+import parameters
 
 
 def unique_ordered_list(seq):
@@ -36,7 +33,7 @@ def make_POTCAR(config):
     symbols = config.get_chemical_symbols()
     unique_symbols = unique_ordered_list(symbols)
     # print(f'{unique_symbols =}')
-    POTCAR_files = [f'$pbepot/{POTCAR_setup[symbol]}/POTCAR' for symbol in unique_symbols]
+    POTCAR_files = [f'$pbepot/{symbol}/POTCAR' for symbol in unique_symbols]
     command = 'cat ' + ' '.join(POTCAR_files) + ' > POTCAR'
     # print(f'{command =}')
     shell(command)
@@ -77,41 +74,23 @@ def makeInputForVasp():
     # verbose = False 
     # atoms = ase_loadcfgs(mlip_cfg_file)
     # set_atom_symbol(atoms, Si_O_H_Al_atom_symbol_tuple_mlip)
-    # if hasattr(param, 'atom_symbols_in_cfg') and param.atom_symbols_in_cfg == 'Si O Al':
+    # if hasattr(parameters, 'atom_symbols_in_cfg') and parameters.atom_symbols_in_cfg == 'Si O Al':
     # if atom_symbols_in_POTCAR == 'Si O Al':
-    # if atom_symbols_in_output_cfg == 'Si O Al':
-    #     atom_symbol_tuple = Si_O_Al_atom_symbol_tuple_mlip
-    # # elif atom_symbols_in_POTCAR == 'Si O H Al':
-    # elif atom_symbols_in_output_cfg == 'Si O H Al':
-    #     atom_symbol_tuple = Si_O_H_Al_atom_symbol_tuple_mlip
-    # else:
-    #     print('Error: please code more.')
-    #     sys.exit()
-    atom_symbol_tuple = Atom_order(atom_symbols_in_output_cfg).atom_symbol_tuple_mlip()
+    if atom_symbols_in_output_cfg == 'Si O Al':
+        atom_symbol_tuple = Si_O_Al_atom_symbol_tuple_mlip
+    # elif atom_symbols_in_POTCAR == 'Si O H Al':
+    elif atom_symbols_in_output_cfg == 'Si O H Al':
+        atom_symbol_tuple = Si_O_H_Al_atom_symbol_tuple_mlip
+    else:
+        print('Error: please code more.')
+        sys.exit()
+    if hasattr(parameters, 'mlip_cfg_file'):
+    atoms_and_forces = read_mlip_cfg(mlip_cfg_file,
+            atom_symbol_tuple=atom_symbol_tuple,
+            sort_method='POTCAR_order')
 
-    if hasattr(param, 'mlip_cfg_file'):
-        atoms_and_forces = read_mlip_cfg(param.mlip_cfg_file,
-                atom_symbol_tuple=atom_symbol_tuple,
-                sort_method='POTCAR_order')
-    elif hasattr(param, 'POSCARs'):
-        if not (len(param.POSCARs) == 1 or len(param.POSCARs) == param.num_seeds):
-            print("Error: The length of the variable 'POSCARs' should be 1 or num_seeds.")
-            sys.exit()
-        if len(param.POSCARs) == 1:
-            POSCAR_files = param.POSCARs * param.num_seeds
-        else:
-            POSCAR_files = param.POSCARs
-        configs = []
-        for POSCAR_file in POSCAR_files:
-            configs.append(read(POSCAR_file, format='vasp'))
-        configs = [sort_config_by_POTCAR_order(config,
-                                               symbols=atom_symbols_in_output_cfg) for
-                   config in configs]
-        atoms_and_forces = [{'atoms': config, 'forces':
-                             np.zeros((len(config),3))} for config in configs]
-
-    if (hasattr(param, 'sort_by_chemical_formula') and
-        param.sort_by_chemical_formula):
+    if (hasattr(parameters, 'sort_by_chemical_formula') and
+        parameters.sort_by_chemical_formula):
         atoms_and_forces = sort_by_chemical_formula(atoms_and_forces)
 
     # print(atoms_and_forces[0]['atoms'].get_positions())
@@ -122,9 +101,9 @@ def makeInputForVasp():
     os.chdir(calc_folder)
 
     for i_structure, this_atoms_and_forces in enumerate(atoms_and_forces):
-        if hasattr(param, 'start_config_number'):
-            if (i_structure < param.start_config_number) or (
-                    i_structure > param.end_config_number):
+        if hasattr(parameters, 'start_config_number'):
+            if (i_structure < parameters.start_config_number) or (
+                    i_structure > parameters.end_config_number):
                 continue
         # i_; index
         # snapshot = ase.io.read('config_step_0.cfg')
@@ -182,7 +161,8 @@ def makeInputForVasp():
         make_POTCAR(snapshot)
 
         shutil.copy('../../template/INCAR', '.')
-        if (hasattr(param, 'preconverge') and param.preconverge):
+        if (hasattr(parameters, 'preconverge') and parameters.preconverge ==
+                True):
             if os.path.isfile('../../template/INCAR.preconverge.change'):
                 shutil.copy('../../template/INCAR.preconverge.change', '.')
             elif os.path.isfile('../../template/INCAR.preconverge'):

@@ -3,7 +3,6 @@
 import os
 import subprocess
 import shutil
-from glob import glob
 from ...util.util import (shell, if_exists_delete_file, if_exists_delete_make,
                           fill_blanks)
 from a_parameters import calc_folder, num_seeds, server
@@ -22,19 +21,15 @@ def collect_preselected():
                 index_seed):
                 continue
             calc_subfolder = f'{str(index_seed).zfill(3)}'
-            # preselected_files = f'{calc_folder}/{calc_subfolder}/preselected.cfg'
-            preselected_files = sorted(glob(f'{calc_folder}/{calc_subfolder}/preselected*.cfg'))
-            # if os.path.isfile(preselected_file):
-            if len(preselected_files) >= 1:
+            preselected_file = f'{calc_folder}/{calc_subfolder}/preselected.cfg'
+            if os.path.isfile(preselected_file):
                 # if calculation finished good and wrote the preselected file
-                for pre_file in preselected_files:
-                    # pre_file: preselected file
-                    shell(f'cat {pre_file}  >> all_sampled.cfg')
+                shell(f'cat {preselected_file}  >> all_sampled.cfg')
             else:
                 print(f'Warning: {calc_subfolder} does not have '
-                      'preselected*.cfg file.')
+                      'preselected.cfg file.')
     else:
-        shell(f'cat {calc_folder}/*/preselected*.cfg > all_sampled.cfg')
+        shell(f'cat {calc_folder}/*/preselected.cfg > all_sampled.cfg')
 
     print('File written: all_sampled.cfg')
     print('Number of configurations: ', end='')

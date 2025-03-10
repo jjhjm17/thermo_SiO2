@@ -21,15 +21,11 @@ def view_SiO2():
     parser.add_argument('--verbose', '-v', action='store_true')  # on/off
     parser.add_argument('--SiOAl', '-Al', action='store_true',
                        help='The order of atoms is Si O Al')
-    parser.add_argument('--SiOY', '-Y', '-y', action='store_true',
-                       help='The order of atoms is Si O Y')
     parser.add_argument("file")
     args = parser.parse_args()
     file = args.file
     if args.SiOAl:
         atom_symbols = 'Si O Al'
-    elif args.SiOY:
-        atom_symbols = 'Si O Y'
     else:
         atom_symbols = 'Si O H Al'
 

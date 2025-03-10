@@ -2,17 +2,22 @@
 """This script collects calculated configuration to cfg file."""
 
 import os
+import shutil
 import sys
 from time import sleep
 # import numpy as np
+from ase.io import read
 from parameters import (mlip_cfg_file, calc_folder, output_file, mlip_version,
-                        server)
+                        server, atom_symbols_in_output_cfg)
 import parameters
 from ...util.util import shell, read_output
 from ...mlip.read_mlip_cfg import read_mlip_cfg
 # from mlippy.atms import loadcfgs, savecfgs
 # from ...mlip.read_mlip_cfg import set_atom_symbol
 from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_mlip
+sys.path.insert(0, '../a.lammps')
+if hasattr(parameters, 'added_train_cfg'):
+    import a_parameters as parameters_lammps
 
 
 def collect_cfg():
@@ -32,6 +37,10 @@ def collect_cfg():
 
 
     for i_structure in range( len( atoms_and_forces)):
+        if hasattr(parameters, 'start_config_number'):
+            if (i_structure < parameters.start_config_number) or (
+                    i_structure > parameters.end_config_number):
+                continue
         # i_; index
         # struct_str = '{:03d}'.format(i_structure)    # string, padded with 0
         struct_str = f'{i_structure:04d}'    # string, padded with 0
@@ -60,9 +69,71 @@ def collect_cfg():
 
 
         if mlip_version == 2:
+            print('Error: mlip_version = 2 is not supported for remapping atom types.')
+            sys.exit()
+            # shell(f'{mlp_binary} '
+            #     f'convert-cfg OUTCAR ../../{output_file} --append '
+            #     '--input-format=vasp-outcar')
+        elif mlip_version == 3:
+            if server == 'fritz':
+                mlp_binary = 'mlp3ser'
+            elif server == 'justus':
+                mlp_binary = 'mlp3'
+            else:
+                print('Error: please code more for this server.')
+                sys.exit()
+
             shell(f'{mlp_binary} '
-                f'convert-cfg OUTCAR ../../{output_file} --append '
-                '--input-format=vasp-outcar')
+                f'convert OUTCAR before_remap.cfg '
+                '--input_format=outcar')
+            # with open('POSCAR', 'r') as fin:
+            #     for index, line in enumerate(fin):
+            #         if index == 5:
+            #             atom_symbols_in_POTCAR = line.split()  #replace('  ', ' ').strip()
+            #         elif index > 5:
+            #             break
+            read_outcar = read('OUTCAR')
+            atom_symbols_in_POTCAR = list(read_outcar.symbols.indices().keys())
+            # print(f'{atom_symbols_in_POTCAR = }')
+            symbols_out = atom_symbols_in_output_cfg.split()
+            remap_numbers = [f'{symbols_out.index(symbol)}' for
+                             symbol in atom_symbols_in_POTCAR]
+            remap_numbers = ' '.join(remap_numbers)
+            # print(f'{remap_numbers = }')
+            shell(f'{mlp_binary} '
+                f'remap_species before_remap.cfg remapped.cfg {remap_numbers}')
+            os.remove('before_remap.cfg')
+            shell(f'cat remapped.cfg >> ../../{output_file}')
+            os.remove('remapped.cfg')
+
+            # if atom_symbols_in_output_cfg == 'Si O H Al':
+            #     if atom_symbols_in_POTCAR == 'O H':
+            #         shell(f'{mlp_binary} '
+            #             f'remap_species before_remap.cfg remapped.cfg 1 2 ')
+            #         # 1 : O, 2 : H
+            #         os.remove('before_remap.cfg')
+            #     elif atom_symbols_in_POTCAR == 'Si O Al':
+            #         shell(f'{mlp_binary} '
+            #             f'remap_species before_remap.cfg remapped.cfg 0 1 3 ')
+            #         # 0: Si, 1 : O, 3 : Al
+            #         os.remove('before_remap.cfg')
+            #     elif atom_symbols_in_POTCAR == atom_symbols_in_output_cfg:
+            #         shutil.move('before_remap.cfg', 'remapped.cfg')
+            #     else:
+            #         print('Error: please code more for atom symbols (No. 2).')
+            #         sys.exit()
+            #     shell(f'cat remapped.cfg >> ../../{output_file}')
+            #     os.remove('remapped.cfg')
+            # elif atom_symbols_in_output_cfg == 'Si O Al':
+            #     if atom_symbols_in_POTCAR == atom_symbols_in_output_cfg:
+            #         shutil.move('before_remap.cfg', 'remapped.cfg')
+            #     else:
+            #         print('Error: please code more for atom symbols (No. 3).')
+            #         sys.exit()
+            #     shell(f'cat remapped.cfg >> ../../{output_file}')
+            # else:
+            #     print('Error: please code more for these atom symbols.')
+            #     sys.exit()
         else:
             print('Error: mlip_version is not supported.')
             sys.exit()
@@ -76,6 +147,12 @@ def collect_cfg():
             sort_method='POTCAR_order')
     print(f'Total {len(atoms_and_forces_out)} configurations are collected in '
           f'this file: {output_file}')
+
+    if hasattr(parameters, 'added_train_cfg'):
+        added_train_cfg = parameters.added_train_cfg
+        shell(f'cat {parameters_lammps.train_cfg} {output_file} > {added_train_cfg}')
+        print(f'Added train set is written: {added_train_cfg}, total configurations: ', end='')
+        shell(f'grep END_CFG {added_train_cfg } | wc --lines')
 
     # # correct atom type
     # if (hasattr(parameters, 'atom_symbols_in_cfg') and

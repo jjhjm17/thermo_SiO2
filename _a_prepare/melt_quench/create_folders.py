@@ -7,7 +7,7 @@ import numpy as np
 from ase.visualize import view
 from ase.io import read
 from ...util.util import get_lammps_random_seed
-from a_parameters import num_seeds, calc_folder
+from a_parameters import num_seeds, calc_folder, input_file
 
 
 def create_folders():
@@ -34,6 +34,7 @@ def create_folders():
         os.chdir(calc_subfolder)
         seed = get_lammps_random_seed()
         with open('../../in.file', 'r') as in_file:
+        # with open(f'../../{input_file}', 'r') as in_file:
             in_file_lines = in_file.readlines()
 
         with open('./in.file', 'w') as out_file:

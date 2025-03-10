@@ -4,14 +4,14 @@ import numpy as np
 from ase.io import read
 from ..util.util import set_actual_atom_symbols
 from ..util.SiO2_parameter import (
-    Si_O_H_Al_atom_symbol_tuple_lammps,
     atomic_number_to_POTCAR_order,
-)
+    Si_O_H_Al_atom_symbol_tuple_lammps, Atom_order)
 
 
-def read_SiO2_dump(file, index, atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_lammps):
+def read_SiO2_dump(file, index, atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_lammps, specorder='Si O H Al'):
     """This function reads a lammps dump file of SiO2 structure and changes the
-    atom index correctly. A list of Atoms-type objects is returned."""
+    atom index correctly. A list of Atoms-type objects is returned.
+    If the parameter specorder is defined, than atom_symbol_tuple is ignored."""
     # 'configs' is a list of Atoms-type objects.
     configs = read(file, format="lammps-dump-text", index=index)
     if type(configs).__name__ == "Atoms":
@@ -24,9 +24,12 @@ def read_SiO2_dump(file, index, atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_la
     return configs
 
 
-def sort_config_by_POTCAR_order(config, return_sort_index=False):
+def sort_config_by_POTCAR_order(config, symbols='Si O H Al',
+                                return_sort_index=False):
     """This function sorts atoms in a configuration by the POTCAR order.
+    For example, Si's come first, O's come next, then H's, then Al's.
     When 'return_sort_index' == True, sort_index is also returned."""
+    atomic_number_to_POTCAR_order = Atom_order(symbols).atomic_number_to_POTCAR_order
     number_to_sort = [
         atomic_number_to_POTCAR_order[atomic_number]
         for atomic_number in config.get_atomic_numbers()
@@ -41,4 +44,5 @@ def sort_config_by_POTCAR_order(config, return_sort_index=False):
     else:
         return_value = config
     return return_value
+
 

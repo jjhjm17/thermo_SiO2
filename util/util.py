@@ -32,10 +32,18 @@ def if_exists_delete_file(file, VERBOSE=True):
         os.remove(file)
 
 
-def get_lammps_random_seed():
-    """This function returns a random seed for a lammps calculation."""
+def get_lammps_random_seed(rng=None):
+    """This function returns a random seed for a lammps calculation.
+    rng: numpy random number generator
+    ex) rng = np.random.default_rng(12345)
+    The random number generator makes reproducible numbers from a seed."""
+    rand_max = 899999999
+    if rng == None:
+        rand = int(datetime.now().timestamp() * 1e6 * 100) % rand_max
+    else:
+        rand = rng.integers(low=0, high=rand_max, size=1)[0]
     # microsecond * 100
-    return int(datetime.now().timestamp() * 1e6 * 100) % 899999999
+    return rand
 
 
 def set_actual_atom_symbols(atoms, atom_symbol_tuple):
@@ -58,3 +66,23 @@ def check_link_symlink(src, dst):
         sys.exit()
     else:
         os.symlink(src, dst)
+
+
+def fill_blanks(file, blanks, variables):
+    """This function fills blanks by variables.
+    ex) file = 'in.file'
+    blanks = ['xxx__seed__xxx']
+    variables = [seed]"""
+    if len(variables) != len(blanks):
+        print('Error: the length of variables and blanks should be '
+              'same.')
+        sys.exit()
+    with open(file, 'r') as fin:
+        in_file_lines = fin.readlines()
+    with open(f'{file}_new', 'w') as out_file:
+        for line in in_file_lines:
+            for variable, blank in zip(variables, blanks):
+                line = line.replace(blank, variable)
+            out_file.write(line)
+    os.remove(file)
+    os.rename(f'{file}_new', file)

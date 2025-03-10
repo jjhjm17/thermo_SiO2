@@ -151,13 +151,19 @@ def read_mlip_cfg_positions(filename, atom_symbol_tuple={0: 'X'}):
     return atoms_list
 
 
-def read_mlip_cfg_mlippy(filename, atom_symbol_tuple={0: 'X'}):
+def read_mlip_cfg_mlippy(filename, atom_symbol_tuple={0: 'X'}, index=':'):
     """This function reads mlip cfg file and change symbols using
     atom_symbol_tuple. This one uses the mlippy package."""
     config_list = ase_loadcfgs(filename)
     if type(config_list[0]) == 'Atom':
         config_list = [config_list]
     # print(f'{config_list=}')
+    if isinstance(index, str):
+        index = slice(*map(lambda x: int(x.strip()) if x.strip() else None,
+                           index.split(':')))
+        # print(f'{index = }')
+        # https://stackoverflow.com/questions/680826/python-create-slice-object-from-string
+    config_list = config_list[index]
     for config in config_list:
         atom_numbers = config.get_atomic_numbers()
         new_atom_symbols = [atom_symbol_tuple[atom_number] for atom_number in

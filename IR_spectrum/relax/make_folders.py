@@ -9,9 +9,11 @@ from ase.visualize import view
 from ase.io import read, write
 from ...util.util import get_lammps_random_seed, set_actual_atom_symbols
 from ...util.SiO2_parameter import (Si_O_Al__Z_of_type_lammps,
+                                    Si_O_H_Al__Z_of_type_lammps,
                                     Si_O_Al_atom_symbol_tuple_lammps,
+                                    Si_O_H_Al_atom_symbol_tuple_lammps,
                                     spec_order_POSCAR_to_LAMMPS)
-from a_parameters import calc_folder, random_seed, structures
+from a_parameters import calc_folder, random_seed, structures, symbols
 import a_parameters
 
 
@@ -29,16 +31,28 @@ def make_folders():
         print(f'index = {i_config}, {config_file}')
         if hasattr(a_parameters, 'format'):
             format = a_parameters.format
+        else:
+            format == 'lammps-data'  # default
+
+        if symbols == 'Si O H Al':
+            atom_symbol_tuple = Si_O_H_Al_atom_symbol_tuple_lammps
+            Z_of_type = Si_O_H_Al__Z_of_type_lammps
+        elif symbols == 'Si O Al':
+            atom_symbol_tuple = Si_O_Al_atom_symbol_tuple_lammps
+            Z_of_type = Si_O_Al__Z_of_type_lammps
+        else:
+            print("Error: the 'symbols' variable is not properly set.")
+            sys.exit()
+
         if format == 'lammps-dump-text':
             # my_atoms = read_SiO2_dump(f'../{config_file}', index=-1)
             my_atoms = read(f'../{config_file}', format=format)
             my_atoms = set_actual_atom_symbols(my_atoms,
-                Si_O_Al_atom_symbol_tuple_lammps)
-        else:
+                atom_symbol_tuple)
+        elif format == 'lammps-data':
             # lammps-data
-            format = 'lammps-data'
-            my_atoms = read(f'../{config_file}', format=format, style=style,
-                            Z_of_type=Si_O_Al__Z_of_type_lammps)
+            my_atoms = read(f'../{config_file}', format=format, style='atomic',
+                            Z_of_type=Z_of_type)
         print(f'  {my_atoms}')
         if i_config == 0:
             print('Please check the first structure visually.')

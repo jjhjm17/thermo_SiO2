@@ -8,6 +8,8 @@ def get_pdos():
     # PDOS
     config = read('POSCAR')
     n_atoms = len(config)  # n: number of
+    print("chemical formula: "
+          f"{config.get_chemical_formula(mode='reduce')}")
     # SiO2
     if config.get_chemical_formula(mode='hill', empirical=True) == 'O2Si':
         n_Si = int(n_atoms / 3)

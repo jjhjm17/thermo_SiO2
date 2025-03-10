@@ -5,10 +5,12 @@ import os
 import shutil
 from ase.io import read, write
 from a_parameters import (calculation_folder as calc_folder,
-                          num_samples, use_vdw_kernel_file,
-                          POSCAR_files)
-from ...util.util import shell
+                          num_samples, use_vdw_kernel_file, symbols)
 from ..EOS.util import get_sample_folder_name
+from ...mlip.read_config import read_SiO2_dump, sort_config_by_POTCAR_order
+from ...util.util import shell
+from ...util.SiO2_parameter import Si_O_Al_atom_symbol_tuple_lammps, Si_O_H_Al_atom_symbol_tuple_lammps
+import a_parameters
 
 
 def make_input_for_vasp():
@@ -36,8 +38,29 @@ def make_input_for_vasp():
         template_folder = f'{root_folder}/template'
         shutil.copy(f'{template_folder}/INCAR', '.')
         # POSCAR_file = f'{root_folder}/{POSCAR_folder}/{sample_folder}/POSCAR'
-        POSCAR_file = f'{root_folder}/{POSCAR_files[i_sample]}'
-        snapshot = read(POSCAR_file)
+        if hasattr(a_parameters, 'POSCAR_files'):
+            POSCAR_files = a_parameters.POSCAR_files
+            POSCAR_file = f'{root_folder}/{POSCAR_files[i_sample]}'
+            snapshot = read(POSCAR_file)
+        elif hasattr(a_parameters, 'dump_files'):
+            if symbols == 'Si O H Al':
+                atom_symbol_tuple = Si_O_H_Al_atom_symbol_tuple_lammps
+            elif symbols == 'Si O Al':
+                atom_symbol_tuple = Si_O_Al_atom_symbol_tuple_lammps
+            else:
+                print('Error: please define the symbols variable correctly.')
+                sys.exit()
+            dump_file = f'{root_folder}/{a_parameters.dump_files[i_sample]}'
+            snapshot = read_SiO2_dump(dump_file, index='-1',
+                                      atom_symbol_tuple=atom_symbol_tuple)[0]
+            if symbols == 'Si O H Al':
+                atom_symbol_tuple = Si_O_H_Al_atom_symbol_tuple_lammps
+                snapshot = sort_config_by_POTCAR_order(snapshot)
+            else:
+                print('Atoms are not sorted by the POTCAR order')
+
+
+
 
         if verbose:
             print('snapshot = ', snapshot)
