@@ -11,8 +11,9 @@ def load_modules():
         print("In Justus cluster, please run the following commands in the bash "
               "by copying it: \n"
               "load_module_mlp3_lammps \n"
-              " WARNING: the collected energy is not E0 (sigma->0), but 'F'."
-              "For now, don't use mlip 3."
+              " WARNING: the collected energy is not E0 (sigma->0), but 'F'. "
+              "For insulators, the difference is small."
+              # "For now, don't use mlip 3."
               )
     elif server == 'justus' and mlip_version == 2:
         print("In Justus cluster, please run the following commands in the bash "

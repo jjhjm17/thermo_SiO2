@@ -66,6 +66,7 @@ def calc_PDF_py2():
     """This function reads config.cif and writes PDF_partial.txt, PDF_total.txt. python 2 is used."""
 
     struct_file = 'config.cif'
+    fig_verbose = False 
 
     # struc = loadStructure('Al_SiO2.cif')
     struc = loadStructure(struct_file)
@@ -92,53 +93,55 @@ def calc_PDF_py2():
     pc2 = DebyePDFCalculator(**cfg2) 
     r3, g3 = pc2(struc)
 
-    plt.figure(0)
-    plt.plot(r1,(g1)*sphericalCF(r1,15.0), label="PDFcalculator")
-    plt.plot(r2,(g2-g3)*sphericalCF(r2,15.0), label="DebyePDFcalculator")
-    plt.plot(r2,g2, label="DebyePDFcalculator g2")
-    plt.plot(r2,sphericalCF(r2,15.0), label="sphericalCF")
-    # print(f'r3 = {r3}')
-    # print(f'g3 = {g3}')
-    plt.plot(r3,g3, label='small angle scattering')
+    if fig_verbose:
+        plt.figure(0)
+        plt.plot(r1,(g1)*sphericalCF(r1,15.0), label="PDFcalculator")
+        plt.plot(r2,(g2-g3)*sphericalCF(r2,15.0), label="DebyePDFcalculator")
+        plt.plot(r2,g2, label="DebyePDFcalculator g2")
+        plt.plot(r2,sphericalCF(r2,15.0), label="sphericalCF")
+        # print(f'r3 = {r3}')
+        # print(f'g3 = {g3}')
+        plt.plot(r3,g3, label='small angle scattering')
 
-    plt.xlim(0.0,10.0)
-    plt.legend()
+        plt.xlim(0.0,10.0)
+        plt.legend()
 
-    plt.savefig('fig__a_small_angle_scatttering.pdf', transparent=True)
+        plt.savefig('fig__a_small_angle_scatttering.pdf', transparent=True)
     # plt.show()
 
     ########Fourier transform the calculated PDFs#############
-    plt.figure(1)
     q1, fq1 = g_to_f([r1,(g1)*sphericalCF(r1,15.0)], 100.0, 1000)
     q2, fq2 = g_to_f([r2,(g2-g3)*sphericalCF(r2,15.0)], 100.0, 1000)
-    plt.plot(q1,fq1, label="PDFcalculator")
-    plt.plot(q2,fq2, label="DebyePDFcalculator")
+    if fig_verbose:
+        plt.figure(1)
+        plt.plot(q1,fq1, label="PDFcalculator")
+        plt.plot(q2,fq2, label="DebyePDFcalculator")
 
-    plt.xlim(0.0,50.0)
-    plt.ylim(-5,7)
-    plt.legend()
-    plt.savefig('fig__b_DebyePDFcalc.pdf', transparent=True)
-    # plt.show()
+        plt.xlim(0.0,50.0)
+        plt.ylim(-5,7)
+        plt.legend()
+        plt.savefig('fig__b_DebyePDFcalc.pdf', transparent=True)
+        # plt.show()
 
     ########Fourier transform the calculated reduced structure functions with Lorch function applied#############
 
-    plt.figure(2)
     r_l1, gr_l1 = Lorch_to_g([q1,fq1], 30.0, 10000)
     r_l2, gr_l2 = Lorch_to_g([q2,fq2], 30.0, 10000)
     r_lorch_debye, gr_lorch_debye = r_l2, gr_l2
     # dat = np.loadtxt(exp_g_r).T
+    if fig_verbose:
+        plt.figure(2)
 
-    plt.plot(r_l1, gr_l1, label="PDFcalculator")
-    plt.plot(r_l2, gr_l2, label="DebyePDFcalculator")
-    # plt.plot(dat[0], dat[1]*8-2.0, color="black", label="experiment")
+        plt.plot(r_l1, gr_l1, label="PDFcalculator")
+        plt.plot(r_l2, gr_l2, label="DebyePDFcalculator")
+        # plt.plot(dat[0], dat[1]*8-2.0, color="black", label="experiment")
 
-    plt.xlim(0.0,10.0)
-    plt.legend()
+        plt.xlim(0.0,10.0)
+        plt.legend()
 
-    plt.savefig('fig__c_Fourier_transform_Lorch.pdf', transparent=True)
-    # plt.show()
+        plt.savefig('fig__c_Fourier_transform_Lorch.pdf', transparent=True)
+        # plt.show()
 
-    plt.figure(3)
     # struc = loadStructure('Al_SiO2.cif')
     struc = loadStructure(struct_file)
     struc.Uisoequiv = 0.001
@@ -184,20 +187,22 @@ def calc_PDF_py2():
         pc2.setTypeMask('H', 'O', True, others=False)
         r72, g72 = pc2(struc)
 
-    plt.plot(r1,(g1-g12)*sphericalCF(r2,15.0), label="Si-Si")
-    plt.plot(r2,(g2-g22)*sphericalCF(r2,15.0), label="Si-Al")
-    plt.plot(r3,(g3-g32)*sphericalCF(r2,15.0), label="Si-O")
-    plt.plot(r4,(g4-g42)*sphericalCF(r2,15.0), label="Al-Al")
-    plt.plot(r5,(g5-g52)*sphericalCF(r2,15.0), label="Al-O")
-    plt.plot(r6,(g6-g62)*sphericalCF(r2,15.0), label="O-O")
-    if has_hydrogen:
-        plt.plot(r7,(g7-g72)*sphericalCF(r2,15.0), label="H-O")
+    if fig_verbose:
+        plt.figure(3)
+        plt.plot(r1,(g1-g12)*sphericalCF(r2,15.0), label="Si-Si")
+        plt.plot(r2,(g2-g22)*sphericalCF(r2,15.0), label="Si-Al")
+        plt.plot(r3,(g3-g32)*sphericalCF(r2,15.0), label="Si-O")
+        plt.plot(r4,(g4-g42)*sphericalCF(r2,15.0), label="Al-Al")
+        plt.plot(r5,(g5-g52)*sphericalCF(r2,15.0), label="Al-O")
+        plt.plot(r6,(g6-g62)*sphericalCF(r2,15.0), label="O-O")
+        if has_hydrogen:
+            plt.plot(r7,(g7-g72)*sphericalCF(r2,15.0), label="H-O")
 
-    plt.xlim(0.0,10.0)
-    plt.legend()
+        plt.xlim(0.0,10.0)
+        plt.legend()
 
-    plt.savefig('fig__d_approximate_small_angle.pdf', transparent=True)
-    # plt.show()
+        plt.savefig('fig__d_approximate_small_angle.pdf', transparent=True)
+        # plt.show()
 
     ########Fourier transform the calculated PDFs to F(Q)#############
 

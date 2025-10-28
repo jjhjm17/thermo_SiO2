@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """This script plots the pair distribution function (PDF).  This is an edit of
 An edit of Maxwell Terban's script for the calculation of pair distribution function."""
-import os
-import sys
-from os import remove
 from os.path import isfile
+# import sys
 import numpy as np
 from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
-from matplotlib import use
+
 # from diffpy.Structure import Structure, loadStructure
 # from diffpy.srreal.pdfcalculator import PDFCalculator, DebyePDFCalculator
 # from diffpy.srfit.pdf.characteristicfunctions import sphericalCF
@@ -17,7 +15,6 @@ from matplotlib import use
 # from diffpy.srreal.pdfcalculator import fftftog, fftgtof
 from ase.io import read, write
 from ..util.util import shell
-from thermo_SiO2.mlip.read import read_SiO2
 # sys.path.insert(0, '../a.total')
 from a_parameters import exp_g_r, has_hydrogen
 import a_parameters as param
@@ -28,47 +25,27 @@ import a_parameters as param
 # has_hydrogen = False
 
 def calc_PDF():
-    PDF_partials = []
-    PDF_totals = []
-    for cfg_file in param.config_files:
-        print('cfg_file: {}'.format(cfg_file))
-        if cfg_file.endswith('.cfg'):
-            format = 'cfg'
-            kwarg = {}
-        # elif cfg_file.endswith('.dump'):
-        #     format = 'lammps-dump-text'
-        #     specorder = ['Si', 'O', 'Al']
-        #     kwarg = {'specorder': specorder}
-        # elif cfg_file.endswith('.dataf'):
-        #     format = 'lammps-data'
-        #     specorder = param.specorder
-        #     kwarg = {'specorder': specorder}
-        else:
-            config_ase = read_SiO2(cfg_file, atom_symbols=param.atom_symbols)
+    if param.config_files[0].endswith('.cfg'):
+        format = 'cfg'
+        kwarg = {}
+    elif param.config_files[0].endswith('.dump'):
+        format = 'lammps-dump-text'
+        specorder = ['Si', 'O', 'Al']
+        kwarg = {'specorder': specorder}
 
-        # if hasattr(a_parameters, 'specorder'):
-        #     kwarg = {'specorder': a_parameters.specorder}
-        # else:
-        #     kwarg = {}
+    # if hasattr(a_parameters, 'specorder'):
+    #     kwarg = {'specorder': a_parameters.specorder}
+    # else:
+    #     kwarg = {}
 
-        # print('Warning: for now, only the 1st configuration is used.')
-        # config_file = param.config_files[0]
-        # config_ase = read(config_file, index="-1", format=format, **kwarg)
-        write('config.cif', config_ase, format="cif")
-        shell("""
-            conda run -n diffpy  python -u -m thermo_SiO2.pair_dist.PDF_py2 | tee b_plot_PDF_py2.out
-            """)
-        remove('config.cif')
-        PDF_partials.append(np.loadtxt('PDF_partial.txt'))
-        PDF_totals.append(np.loadtxt('PDF_total.txt'))
-    print('Calculation of average of PDFs. ')
-    PDF_partial_avg = np.average(PDF_partials, axis=0)
-    PDF_total_avg = np.average(PDF_totals, axis=0)
-    np.savetxt('PDF_partial.txt', PDF_partial_avg, fmt='%0.6g', header='r_l1,  gr_l1,  gr_l2,  ..., gr_l6' )
-    np.savetxt('PDF_total.txt', PDF_total_avg, fmt='%0.6g', header='r_lorch_ebye, gr_lorch_debye')
-    if len(cfg_file) > 1:
-        PDF_total_std = np.std(PDF_totals, axis=0)
-        np.savetxt('PDF_total_std.txt', PDF_total_std, fmt='%0.6g', header='r_lorch_ebye, gr_lorch_debye')
+    print('Warning: for now, only the 1st configuration is used.')
+    config_file = param.config_files[0]
+    config_ase = read(config_file, index="-1", format=format, **kwarg)
+    write('config.cif', config_ase, format="cif")
+
+    shell("""
+          conda run -n diffpy  python -u -m thermo_SiO2.pair_dist.PDF_py2 | tee b_plot_PDF_py2.out
+          """)
 
 
 def add_subfigure_label(ax_in, string):
@@ -83,7 +60,7 @@ def add_subfigure_label(ax_in, string):
 #     ys = ys[x_indices]
 #     peaks, _ = find_peaks(ys
 
-def add_arrow_text(ax, dx, dy, x0, y0, string, pad=-2, **kwargs):
+def add_arrow_text(ax, dx, dy, x0, y0, string, *, pad=-2, **kwargs):
     ax.annotate(string, xy=(x0, y0), xytext=(x0+dx, y0+dy),
                 arrowprops=dict(arrowstyle="->"),
                 bbox=dict(pad=pad, facecolor="none", edgecolor="none"),
@@ -92,7 +69,6 @@ def add_arrow_text(ax, dx, dy, x0, y0, string, pad=-2, **kwargs):
 
 def plot_PDF():
 
-    use('pdf')
     std_avail = False
     if hasattr(param, 'PDF_folders'):
         print('Calculation of average of PDFs. ')
@@ -102,11 +78,9 @@ def plot_PDF():
             PDF_partials = []
             PDF_totals = []
             for folder in param.PDF_folders:
-                print('folder: {}'.format(folder))
-                # PDF_partials.append(np.loadtxt(f'{folder}/PDF_partial.txt'))
-                PDF_partials.append(np.loadtxt('{}/PDF_partial.txt'.format(folder)))
-                # PDF_totals.append(np.loadtxt(f'{folder}/PDF_total.txt'))
-                PDF_totals.append(np.loadtxt('{}/PDF_total.txt'.format(folder)))
+                print(f'folder: {folder}')
+                PDF_partials.append(np.loadtxt(f'{folder}/PDF_partial.txt'))
+                PDF_totals.append(np.loadtxt(f'{folder}/PDF_total.txt'))
             PDF_partial_avg = np.average(PDF_partials, axis=0)
             PDF_total_avg = np.average(PDF_totals, axis=0)
             PDF_total_std = np.std(PDF_totals, axis=0)
@@ -129,13 +103,11 @@ def plot_PDF():
 
     r_l1,  gr_l1, gr_l2, gr_l3, gr_l4, gr_l5, gr_l6 = PDF_partial.T
     r_lorch_debye, gr_lorch_debye  = PDF_total.T
-
-    if os.path.isfile('PDF_total_std.txt'):
-        std_avail = True
+    if std_avail:
         PDF_total_std = np.loadtxt('PDF_total_std.txt')
         __, gr_lorch_debye_std  = PDF_total_std.T
 
-    # config = read(param.PDF_folders[0] + '/config.cif')
+    config = read(param.PDF_folders[0] + '/config.cif')
     # rho_0 = len(config) / config.get_volume()
 
     # offset = -2
@@ -148,15 +120,9 @@ def plot_PDF():
     size_y = 7 / 2.54 * 1.7
     plt.style.use("~/program/stylelib/paper.mplstyle")
     # fig, ax = plt.subplots(1, 1, figsize=(size_x, size_y), sharex=True)
-
-    ylim_0 = [-1.99, 6]  # axis 0
-    y_shift = -1  # shift between partial PDFs
-    y0 = 0  # start of the shift of partial PDF
-    num_curves = 6  # number of partial PDFs
-    ylim_1 = [ylim_0[0] + (num_curves - 1) * y_shift + 1, ylim_0[1]]   # axis 1
-    height_ratios = [ylim_0[1] - ylim_0[0], ylim_1[1] - ylim_1[0]]
+    height_ratio = 1.5
     fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(size_x, size_y), sharex=True,
-                             height_ratios=height_ratios)
+                             height_ratios=[1, height_ratio])
 
 
     ax = axes[0]
@@ -169,12 +135,15 @@ def plot_PDF():
     # ax.plot(r_baseline, g_baseline, color="0.5", linestyle='--')
     ax.legend(loc='upper right')  # matplotlib version 3.5.3
     ax.set_ylabel("$G$ (Å$^{-2}$)", labelpad=1.0)
+    ylim_0 = [-1.99, 6]  # axis 0
     ax.set_ylim(ylim_0)
     ax.yaxis.set_major_locator(MultipleLocator(2))
     add_subfigure_label(ax, '(a)')
 
 
-    y_shifts = np.linspace(start=y0, stop=y0+(num_curves-1)*y_shift, num=num_curves)
+    y_shift = -0.5  # shift between partial PDFs
+    y0 = 0  # start of the shift of partial PDF
+    y_shifts = np.linspace(start=y0, stop=y0+5*y_shift, num=6)
     ax = axes[1]
     # ax.plot(r_l3, gr_l3, label="Si-O")
     ax.plot(r_l1, gr_l3 + y_shifts[0], label=r"Si$-$O", color='C0')
@@ -190,53 +159,48 @@ def plot_PDF():
     ax.plot(r_l1, gr_l2 + y_shifts[5], label="Si$-$Al", linestyle='-', color='C2')
     # ax.plot(r_l4, gr_l4, label="Al-Al")
     # ax.plot(r_l4, 10*gr_l4, label=r"Al-Al ($\times$10)")
-    ax.set_ylim(ylim_1)
+    ylim = [-1.99, 6]
+    ax.set_ylim(ylim)
     if has_hydrogen:
         ax.plot(r_l7, 10*gr_l7, label="H$-$O (x10)")
 
 
     ax.set_xlim(0.0,10.0)
     ax.set_xlabel("$r$ (Å)", labelpad=0.8)
-    ax.set_ylabel("$G$ (Å$^{-2}$)", labelpad=0.9)
+    ax.set_ylabel("$G$ (Å$^{-2}$)", labelpad=1.0)
     ax.legend(loc='upper right', ncol=2)  # matplotlib version 3.5.3
     ax.yaxis.set_major_locator(MultipleLocator(2))
     add_subfigure_label(ax, '(b)')
 
     ax.text(1.7, 5.2, r'Si$-$O')
-    # ax.annotate(r'Al$-$O', xy=(1.8, -0.6), xytext=(1.8, 1),
-    #             arrowprops=dict(arrowstyle="->"),
-    #             bbox=dict(pad=-2, facecolor="none", edgecolor="none"))
-    ax.text(2.3, -1.2, r'Al$-$O', va='top', ha='right')
-    # dx = 0.0
-    # dy = 1.0
-    # x0, y0 = 2.65, 1.5
-    # string = r'O$-$O'
-    # add_arrow_text(ax, dx, dy, x0, y0, string)
-    # ax.text(3.3, -1.4, r'O$-$O', va='top', ha='center')
-    ax.text(2.3, -1.9, r'O$-$O', va='top', ha='right')
+    ax.annotate(r'Al$-$O', xy=(1.9, 0.4), xytext=(1.8, 2),
+                arrowprops=dict(arrowstyle="->"),
+                bbox=dict(pad=-2, facecolor="none", edgecolor="none"))
+    dx = 0.0
+    dy = 1.0
+    x0, y0 = 2.65, 1.5
+    string = r'O$-$O'
+    add_arrow_text(ax, dx, dy, x0, y0, string)
 
-    # ax.text(3.0, 1.3, r'Si$-$Si', va='bottom', ha='left')
-    # add_arrow_text(ax, dx=0, dy=-1.5, x0=2.6, y0=0.45, string=r"Al$-$Al ($\times$10)",
-    #                pad=-1, va='top', ha='center')
-    ax.text(2.5, -3.2, r"Al$-$Al ($\times$10)", va='top', ha='right')
-    ax.text(3.3, -4, r"Si$-$Si", va='bottom', ha='left')
+    ax.text(3.0, 1.3, r'Si$-$Si', va='bottom', ha='left')
+    add_arrow_text(ax, dx=0, dy=-1.5, x0=2.6, y0=0.45, string=r"Al$-$Al ($\times$10)",
+                   pad=-1, va='top', ha='center')
 
     ax.text(4.0, 1.0, r'Si$-$O', va='bottom', ha='left')
-    ax.text(3.3, -5.2, r'Si$-$Al', va='top', ha='left')
-    # add_arrow_text(ax, dx=0, dy=-1.35, x0=4.9, y0=0.3, string=r"Si$-$Si",
-    #                pad=-1, va='top', ha='center')
+    ax.text(4.9, 0.35, r'O$-$O', va='bottom', ha='left')
+    add_arrow_text(ax, dx=0, dy=-1.35, x0=4.9, y0=0.3, string=r"Si$-$Si",
+                   pad=-1, va='top', ha='center')
 
     fig.subplots_adjust(
-        top=0.985, bottom=0.060, left=0.085, right=0.985, hspace=0.0,
+        top=0.985, bottom=0.075, left=0.080, right=0.985, hspace=0.0,
         wspace=0.2
     )
     # fig.savefig('fig__pair_dist_no_exp.pdf', dpi=1000, transparent=True)
-    fig.align_ylabels()
     fig.savefig('fig__pair_dist.pdf', dpi=1000, transparent=True)
 
     # fig.savefig('fig_pair_dist.pdf', transparent=True)
     # if make_detail_figures:
-    # plt.show()
+    plt.show()
 
 
 

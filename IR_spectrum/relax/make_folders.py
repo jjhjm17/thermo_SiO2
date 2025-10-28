@@ -44,14 +44,19 @@ def make_folders():
             print("Error: the 'symbols' variable is not properly set.")
             sys.exit()
 
+        if config_file.startswith('/'):
+            cfg_path = config_file
+        else:
+            cfg_path = f'../{config_file}'
+
         if format == 'lammps-dump-text':
             # my_atoms = read_SiO2_dump(f'../{config_file}', index=-1)
-            my_atoms = read(f'../{config_file}', format=format)
+            my_atoms = read(cfg_path, format=format)
             my_atoms = set_actual_atom_symbols(my_atoms,
                 atom_symbol_tuple)
         elif format == 'lammps-data':
             # lammps-data
-            my_atoms = read(f'../{config_file}', format=format, style='atomic',
+            my_atoms = read(cfg_path, format=format, atom_style='atomic',
                             Z_of_type=Z_of_type)
         print(f'  {my_atoms}')
         if i_config == 0:
@@ -73,7 +78,7 @@ def make_folders():
                 if random_seed:
                     line = line.replace('xxxSEEDxxx', f'{seed}')
                 out_file.write(line)
-        os.symlink('../../mlip.ini', 'mlip.ini')
+        # os.symlink('../../mlip.ini', 'mlip.ini')
         # copy(f'../../{config_file}', 'input_structure.dataf')
         # write('input_structure.dataf', my_atoms, format='lammps-data',
         #       spec_order=['Si', 'O', 'H', 'Al'])

@@ -12,19 +12,6 @@ import a_parameters
 
 def get_scaled_cell():
     """This function prints the number of atoms and returns the cell size."""
-    density_SiO2 = 2.20  # g/cm^3
-    density_with_Al2O3 = 2.43
-    # density_with_Al2O3: exp. density of 25 mole % Al2O3, 2.43 g/cm^3
-    # (SiO2)_(1-x) (Al2O3)_x, x=0.25
-    # ref.  Structure of SiO2–Al2O3 glasses: Combined X-ray diffraction,
-    # IR and Raman studies
-    # Journal of Non-Crystalline Solids 351 (2005) 1032–1038
-    # https://doi.org/10.1016/j.jnoncrysol.2005.01.014
-    #
-    # extrapolate
-    # 2.20 + (2.43-2.20) * (100/25) = 3.12 g/cm^3
-    # Al2O3 density: 3.99 g/cm^3 (Wikipedia)
-    # The difference probably comes from the different coordination numbers.
 
     mass_Si = 28.0855  # getAtomicMass.sh Si
     mass_O = 15.9994
@@ -56,11 +43,35 @@ def get_scaled_cell():
     # np.float64: gives inf when divided by 0
     print(f"{Al_Si_ratio = :.3f}  {mole_ratio_SiO2  = :.3f}")
 
-
     print(f"{mole_ratio_Al2O3 = :0.4f}")
-    density_Al2O3_SiO2 = (
-        density_SiO2 + (density_with_Al2O3 - density_SiO2) * mole_ratio_Al2O3 / 0.25
-    )
+    if formula_num_Si == 0: # Al2O3
+        density_Al2O3_SiO2 = 3.97  # g/cm^3
+
+        # Ref
+        # https://pubchem.ncbi.nlm.nih.gov/compound/Aluminum-Oxide#section=Density
+        # Soft white powder; transforms to corundum at 1200 °C; density: 3.97 g/cu cm; insoluble in water; soluble in acid; slightly soluble in alkaline solutions /Gamma-alumina/
+        # Lide, D.R. CRC Handbook of Chemistry and Physics 88TH Edition 2007-2008. CRC Press, Taylor & Francis, Boca Raton, FL 2007, p. 4-45
+
+        # Note the extrapolated value from the below formula gives a different
+        # value, density_Al2O3_SiO2 = 3.120 g/cm^3
+
+    else:  # contains SiO2
+        density_SiO2 = 2.20  # g/cm^3
+        density_with_Al2O3 = 2.43
+        # density_with_Al2O3: exp. density of 25 mole % Al2O3, 2.43 g/cm^3
+        # (SiO2)_(1-x) (Al2O3)_x, x=0.25
+        # ref.  Structure of SiO2–Al2O3 glasses: Combined X-ray diffraction,
+        # IR and Raman studies
+        # Journal of Non-Crystalline Solids 351 (2005) 1032–1038
+        # https://doi.org/10.1016/j.jnoncrysol.2005.01.014
+        #
+        # extrapolate
+        # 2.20 + (2.43-2.20) * (100/25) = 3.12 g/cm^3
+        # Al2O3 density: 3.99 g/cm^3 (Wikipedia)
+        # The difference probably comes from the different coordination numbers.
+        density_Al2O3_SiO2 = (
+            density_SiO2 + (density_with_Al2O3 - density_SiO2) * mole_ratio_Al2O3 / 0.25
+        )
 
     # volume = alat**2 * clat * np.sqrt(3) / 2  # Ang^3
     hole_radius = hole_radius_global  # make local for locals() later

@@ -8,17 +8,19 @@ from a_parameters import (calculation_folder as calc_folder,
                           num_samples, use_vdw_kernel_file, symbols)
 from ..EOS.util import get_sample_folder_name
 from ...mlip.read_config import read_SiO2_dump, sort_config_by_POTCAR_order
+from ...mlip.read import read_SiO2
 from ...util.util import shell
 from ...util.SiO2_parameter import Si_O_Al_atom_symbol_tuple_lammps, Si_O_H_Al_atom_symbol_tuple_lammps
 import a_parameters
+import a_parameters as param
 
 
 def make_input_for_vasp():
     """This function makes input files used by vasp for the charge calculation."""
 
     # for debugging
-    verbose = True
-    # verbose = False
+    # verbose = True
+    verbose = False
 
     # print(atoms_and_forces[0]['atoms'].get_positions())
     if os.path.exists('jobList'):
@@ -58,9 +60,10 @@ def make_input_for_vasp():
                 snapshot = sort_config_by_POTCAR_order(snapshot)
             else:
                 print('Atoms are not sorted by the POTCAR order')
-
-
-
+        elif hasattr(a_parameters, 'data_files'):
+            snapshot = read_SiO2(f'{root_folder}/{param.data_files[i_sample]}',
+                                 atom_symbols=symbols)[0]
+            snapshot = sort_config_by_POTCAR_order(snapshot)
 
         if verbose:
             print('snapshot = ', snapshot)

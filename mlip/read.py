@@ -1,16 +1,20 @@
 """This script contains functions for reading SiO2 configurations."""
 
 import sys
+from pathlib import PosixPath
 from ase.io import read
 from .read_mlip_cfg import read_mlip_cfg_mlippy
 from ..util.SiO2_parameter import Atom_order
 
 
 def read_SiO2(file, atom_symbols, index=':'):
-    """This function reads lammps or mlip SiO2 file generally."""
+    """This function reads lammps or mlip SiO2 file generally.
+    atom_symbols: ex) "Si O H Al"
+    """
 
     order = Atom_order(atom_symbols)
-
+    if isinstance(file, PosixPath):
+        file = str(file)  # 'in' does not work on PosixPath but only on string.
     if '.cfg' in file:
         # configs: configurations
         atom_symbol_tuple = order.atom_symbol_tuple_mlip()
@@ -19,7 +23,7 @@ def read_SiO2(file, atom_symbols, index=':'):
     elif 'dump' in file:
         specorder = atom_symbols.split()
         configs = read(file, index=index, format='lammps-dump-text', specorder=specorder)
-    elif 'dataf' in file:  # lammps-data
+    elif 'dataf' in file or 'lammps-data' in file:  # lammps-data
         # config = read(file, format='lammps-data', atom_style='atomic')
         Z_of_type = order.Z_of_type_lammps()
         configs = read(file, index=index, format='lammps-data',

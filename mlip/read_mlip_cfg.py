@@ -4,6 +4,7 @@ import sys
 import numpy as np
 import ase
 from ase.io import write
+from ase.calculators.singlepoint import SinglePointCalculator
 from mlippy.atms import ase_loadcfgs
 from ..util.SiO2_parameter import (atomic_symbol_to_number,
         atomic_number_to_POTCAR_order)
@@ -94,7 +95,8 @@ def read_mlip_cfg(filename, atom_symbol_tuple={0: 'X'},
             atom_symbol_joined = ''.join(types)
 
             positions = np.array(positions)
-            # print(f'{[vec_a, vec_b, vec_c] =}')
+            print(f'{[vec_a, vec_b, vec_c] =}')
+            # breakpoint()
             config = ase.Atoms(atom_symbol_joined, cell=[vec_a, vec_b, vec_c],
                                positions=positions, pbc=True)
 
@@ -168,10 +170,14 @@ def read_mlip_cfg_mlippy(filename, atom_symbol_tuple={0: 'X'}, index=':'):
         atom_numbers = config.get_atomic_numbers()
         new_atom_symbols = [atom_symbol_tuple[atom_number] for atom_number in
                             atom_numbers]
-        # new_atom_symbols = []
-        # for ind, atom_number in enumerate(atom_numbers):
-        #     new_atom_symbols.append(atom_symbol_tuple[atom_number])
         config.set_chemical_symbols(new_atom_symbols)
+
+        # To show forces in ase gui
+        # adapted from ikdtools.io.mlip.cfg
+        if not hasattr(config, "calc") or config.calc is None:
+            if hasattr(config, 'forces'):
+                results = {'energy': config.energy, 'forces': config.forces}
+                config.calc = SinglePointCalculator(atoms=config, **results)  # dummy calculator
     # print(config_list[0].forces)
     # print(config_list[0].get_forces())
     return config_list

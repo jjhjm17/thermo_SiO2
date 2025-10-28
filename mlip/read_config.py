@@ -29,7 +29,7 @@ def sort_config_by_POTCAR_order(config, symbols='Si O H Al',
     """This function sorts atoms in a configuration by the POTCAR order.
     For example, Si's come first, O's come next, then H's, then Al's.
     When 'return_sort_index' == True, sort_index is also returned."""
-    atomic_number_to_POTCAR_order = Atom_order(symbols).atomic_number_to_POTCAR_order
+    atomic_number_to_POTCAR_order = Atom_order(symbols).atomic_number_to_POTCAR_order()
     number_to_sort = [
         atomic_number_to_POTCAR_order[atomic_number]
         for atomic_number in config.get_atomic_numbers()

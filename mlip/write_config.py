@@ -10,7 +10,7 @@ from mlippy.atms import ase_savecfgs
 from ..util.SiO2_parameter import atomic_number_to_POTCAR_order, Si_O_Al_atomic_number_to_POTCAR_order
 
 
-def write_cfg_SiO2(file, configs, atom_symbols='Si O Al H', desc=None):
+def write_cfg_SiO2(file, configs, atom_symbols='Si O H Al', desc=None):
     """This function writes a mlip cfg file of SiO2 structure and changes the
     atom type correctly. A list of Atoms-type objects is returned."""
     # 'configs' is a list of Atoms-type objects.

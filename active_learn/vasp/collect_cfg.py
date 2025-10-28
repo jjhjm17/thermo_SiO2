@@ -7,17 +7,18 @@ import sys
 from time import sleep
 # import numpy as np
 from ase.io import read
-from parameters import (mlip_cfg_file, calc_folder, output_file, mlip_version,
+from parameters import (calc_folder, output_file, mlip_version,
                         server, atom_symbols_in_output_cfg)
-import parameters
+import parameters as param
 from ...util.util import shell, read_output
 from ...mlip.read_mlip_cfg import read_mlip_cfg
 # from mlippy.atms import loadcfgs, savecfgs
 # from ...mlip.read_mlip_cfg import set_atom_symbol
 from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_mlip
-sys.path.insert(0, '../a.lammps')
-if hasattr(parameters, 'added_train_cfg'):
+if hasattr(param, 'added_train_cfg'):
+    sys.path.insert(0, '../a.lammps')
     import a_parameters as parameters_lammps
+from thermo_SiO2.active_learn.vasp.makeInputForVasp import get_atoms_and_forces
 
 
 def collect_cfg():
@@ -29,17 +30,19 @@ def collect_cfg():
 
     # atoms = ase_loadcfgs(mlip_cfg_file)
     # set_atom_symbol(atoms, Si_O_H_Al_atom_symbol_tuple_mlip)
-    atoms_and_forces = read_mlip_cfg(mlip_cfg_file,
-            atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip,
-            sort_method='POTCAR_order')
+    if hasattr(param, 'mlip_cfg_file'):
+        atoms_and_forces = read_mlip_cfg(param.mlip_cfg_file,
+                atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip,
+                sort_method='POTCAR_order')
+    # atoms_and_forces = get_atoms_and_forces(param)
 
     os.chdir(calc_folder)
 
 
     for i_structure in range( len( atoms_and_forces)):
-        if hasattr(parameters, 'start_config_number'):
-            if (i_structure < parameters.start_config_number) or (
-                    i_structure > parameters.end_config_number):
+        if hasattr(param, 'start_config_number'):
+            if (i_structure < param.start_config_number) or (
+                    i_structure > param.end_config_number):
                 continue
         # i_; index
         # struct_str = '{:03d}'.format(i_structure)    # string, padded with 0
@@ -98,6 +101,12 @@ def collect_cfg():
             symbols_out = atom_symbols_in_output_cfg.split()
             remap_numbers = [f'{symbols_out.index(symbol)}' for
                              symbol in atom_symbols_in_POTCAR]
+            # If remap_numbers is too short, mlp3 does not work. So we append
+            # more numbers without meaning to keep the length as expected.
+            if len(remap_numbers) < len(symbols_out):
+                full_list = [f'{x}' for x in list(range(len(symbols_out)))]
+                remaining = [x for x in full_list if x not in remap_numbers]
+                remap_numbers.extend(remaining)
             remap_numbers = ' '.join(remap_numbers)
             # print(f'{remap_numbers = }')
             shell(f'{mlp_binary} '
@@ -148,8 +157,8 @@ def collect_cfg():
     print(f'Total {len(atoms_and_forces_out)} configurations are collected in '
           f'this file: {output_file}')
 
-    if hasattr(parameters, 'added_train_cfg'):
-        added_train_cfg = parameters.added_train_cfg
+    if hasattr(param, 'added_train_cfg'):
+        added_train_cfg = param.added_train_cfg
         shell(f'cat {parameters_lammps.train_cfg} {output_file} > {added_train_cfg}')
         print(f'Added train set is written: {added_train_cfg}, total configurations: ', end='')
         shell(f'grep END_CFG {added_train_cfg } | wc --lines')

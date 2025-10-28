@@ -19,7 +19,7 @@ def read_output(command):
 def if_exists_delete_make(folder):
     """This function deletes a folder if it exists, and makes the folder."""
     if os.path.exists(folder):
-        print(f'Existing folder {folder} is deleted.')
+        print('Existing folder {} is deleted.'.format(folder))
         shutil.rmtree(folder)
     os.mkdir(folder)
 
@@ -28,7 +28,7 @@ def if_exists_delete_file(file, VERBOSE=True):
     """This function deletes a file if it exists."""
     if os.path.exists(file):
         if VERBOSE:
-            print(f'Existing file {file} is deleted.')
+            print('Existing file {} is deleted.'.format(file))
         os.remove(file)
 
 
@@ -62,7 +62,7 @@ def check_link_symlink(src, dst):
     the symlink. src: source, dst: destination"""
     if not os.path.exists(os.path.realpath(src)):
         # realpath: Follow symlink recursively.
-        print(f'\n Error: broken symlink at {src}')
+        print('\n Error: broken symlink at {}'.format(src))
         sys.exit()
     else:
         os.symlink(src, dst)
@@ -79,7 +79,7 @@ def fill_blanks(file, blanks, variables):
         sys.exit()
     with open(file, 'r') as fin:
         in_file_lines = fin.readlines()
-    with open(f'{file}_new', 'w') as out_file:
+    with open('{}_new'.format(file), 'w') as out_file:
         for line in in_file_lines:
             for variable, blank in zip(variables, blanks):
                 line = line.replace(blank, variable)
