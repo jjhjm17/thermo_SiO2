@@ -7,7 +7,7 @@ from .read_mlip_cfg import read_mlip_cfg_mlippy
 from ..util.SiO2_parameter import Atom_order
 
 
-def read_SiO2(file, atom_symbols, index=':'):
+def read_SiO2(file, atom_symbols, index=':', silent=False):
     """This function reads lammps or mlip SiO2 file generally.
     atom_symbols: ex) "Si O H Al"
     """
@@ -23,11 +23,15 @@ def read_SiO2(file, atom_symbols, index=':'):
     elif 'dump' in file:
         specorder = atom_symbols.split()
         configs = read(file, index=index, format='lammps-dump-text', specorder=specorder)
-    elif 'dataf' in file or 'lammps-data' in file:  # lammps-data
+    elif ('dataf' in file) or ('lammps-data' in file) or ('.data' in file):  # lammps-data
         # config = read(file, format='lammps-data', atom_style='atomic')
         Z_of_type = order.Z_of_type_lammps()
-        configs = read(file, index=index, format='lammps-data',
-                       Z_of_type=Z_of_type, atom_style='atomic')
+        try:
+            configs = read(file, index=index, format='lammps-data',
+                           Z_of_type=Z_of_type, atom_style='atomic')
+        except RuntimeError: # Style "atomic" not supported or invalid. Number of fields: 9
+            configs = read(file, index=index, format='lammps-data',
+                           Z_of_type=Z_of_type, atom_style='charge')
         # print(f'{config = }')
         # configs = [config]
     elif file.endswith('.db'):  # ase db
@@ -41,7 +45,7 @@ def read_SiO2(file, atom_symbols, index=':'):
     if type(configs).__name__ == 'Atoms':
         configs = [configs]
         # If there is one configuration, convert to a list of configs.
-
-    print(f'{len(configs)} configuration(s).')
-    print(f'{configs[0] = }')
+    if not silent:
+        print(f'{len(configs)} configuration(s).')
+        print(f'{configs[0] = }')
     return configs

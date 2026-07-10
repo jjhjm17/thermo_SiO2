@@ -12,6 +12,7 @@ from parameters import (calc_folder, output_file, mlip_version,
 import parameters as param
 from ...util.util import shell, read_output
 from ...mlip.read_mlip_cfg import read_mlip_cfg
+from ...mlip.read_mlip_cfg import read_mlip_cfg_mlippy
 # from mlippy.atms import loadcfgs, savecfgs
 # from ...mlip.read_mlip_cfg import set_atom_symbol
 from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_mlip
@@ -31,15 +32,20 @@ def collect_cfg():
     # atoms = ase_loadcfgs(mlip_cfg_file)
     # set_atom_symbol(atoms, Si_O_H_Al_atom_symbol_tuple_mlip)
     if hasattr(param, 'mlip_cfg_file'):
-        atoms_and_forces = read_mlip_cfg(param.mlip_cfg_file,
-                atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip,
-                sort_method='POTCAR_order')
+        # atoms_and_forces = read_mlip_cfg(param.mlip_cfg_file,
+        #         atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip,
+        #         sort_method='POTCAR_order')
+        cfgs = read_mlip_cfg_mlippy(param.mlip_cfg_file,
+                atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
+        # here, Si_O_H_Al_atom_symbol_tuple_mlip is not used later.
+
     # atoms_and_forces = get_atoms_and_forces(param)
 
     os.chdir(calc_folder)
 
 
-    for i_structure in range( len( atoms_and_forces)):
+    # for i_structure in range( len( atoms_and_forces)):
+    for i_structure in range( len( cfgs)):
         if hasattr(param, 'start_config_number'):
             if (i_structure < param.start_config_number) or (
                     i_structure > param.end_config_number):

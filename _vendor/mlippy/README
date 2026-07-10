@@ -1,0 +1,11 @@
+This project vendors a modified copy of mlippy from MLIP-2. The modifications are limited to CFG output formatting. The original code is licensed under the BSD 2-Clause License; see LICENSE.mlippy.
+
+These are python scripts of mlippy branch of mlip-2.
+The change is marked.
+
+git clone -b mlippy https://gitlab.com/ashapeev/mlip-2.git
+
+We copied these files: 
+  cp -r ../../src/external/python/*py .
+
+

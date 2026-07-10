@@ -5,7 +5,7 @@ import os
 import shutil
 import numpy as np
 from ase.io import read
-from a_parameters import (calculation_folder as calc_folder,
+from a_parameters import (calc_folder,
                           num_samples, use_vdw_kernel_file)
 from ...util.util import shell
 from ..EOS.util import get_sample_folder_name

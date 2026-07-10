@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from ...util.util import shell
-from parameters import temperature, freq_range, linewidth
+# from parameters import temperature, freq_range, linewidth
+from parameters import freq_range, linewidth
 
 # Ref
 # https://github.com/skelton-group/Phonopy-Spectroscopy/tree/master/example/a-SiO2

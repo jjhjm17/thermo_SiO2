@@ -146,7 +146,7 @@ def plot_PDF():
     size_x = 9 / 2.54
     # size_y = 7 / 2.54 * 1.0
     size_y = 7 / 2.54 * 1.7
-    plt.style.use("~/program/stylelib/paper.mplstyle")
+    plt.style.use("~/program/stylelib/paper.mplstyle.no_tex")
     # fig, ax = plt.subplots(1, 1, figsize=(size_x, size_y), sharex=True)
 
     ylim_0 = [-1.99, 6]  # axis 0

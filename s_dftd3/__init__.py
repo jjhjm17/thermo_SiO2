@@ -1,0 +1,1 @@
+from thermo_SiO2.s_dftd3.dftd3_wrapper import SDftd3Calculator

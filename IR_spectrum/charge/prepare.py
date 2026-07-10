@@ -2,17 +2,17 @@
 """This script makes folders for charge calculation, to run vasp."""
 
 import os
+import numpy as np
 import shutil
 from ase.io import read, write
-from a_parameters import (calculation_folder as calc_folder,
-                          num_samples, use_vdw_kernel_file, symbols)
 from ..EOS.util import get_sample_folder_name
 from ...mlip.read_config import read_SiO2_dump, sort_config_by_POTCAR_order
 from ...mlip.read import read_SiO2
-from ...util.util import shell
+from ...util.util import shell, read_output, fill_blanks, make_POTCAR
 from ...util.SiO2_parameter import Si_O_Al_atom_symbol_tuple_lammps, Si_O_H_Al_atom_symbol_tuple_lammps
 import a_parameters
 import a_parameters as param
+from a_parameters import calc_folder, num_samples, use_vdw_kernel_file, symbols
 
 
 def make_input_for_vasp():
@@ -38,7 +38,8 @@ def make_input_for_vasp():
 
         root_folder = '../..'
         template_folder = f'{root_folder}/template'
-        shutil.copy(f'{template_folder}/INCAR', '.')
+        # os.symlink(f'{template_folder}/POTCAR', 'POTCAR')
+
         # POSCAR_file = f'{root_folder}/{POSCAR_folder}/{sample_folder}/POSCAR'
         if hasattr(a_parameters, 'POSCAR_files'):
             POSCAR_files = a_parameters.POSCAR_files
@@ -68,10 +69,28 @@ def make_input_for_vasp():
         if verbose:
             print('snapshot = ', snapshot)
 
+        all_symbols, unique_symbols = make_POTCAR(snapshot)
+        shutil.copy(f'{template_folder}/INCAR', '.')
+
+        num_atoms = len(snapshot)
+        if hasattr(param, 'nbands_less') and param.nbands_less:
+            zval_s = read_output("grep ZVAL POTCAR | awk '{print $6}' ")
+            zval_s = [int(float(s)) for s in zval_s.split()]
+            # ZVAL_per_formula_unit = 16  # (4 + 6 * 2),  Si O2
+
+            # Count atoms and multiply by ZVAL
+            atom_counts = [all_symbols.count(sym) for sym in unique_symbols]
+            nelect = np.dot(atom_counts, zval_s)
+            nbands = nelect / 2 + num_atoms / 4
+            # vasp manual for NBANDS
+            # "In some cases, it is also possible to decrease it to NELECT/2+NIONS/4"
+            
+            nbands = int(np.ceil(nbands))
+            fill_blanks('INCAR', blanks=['xxx__NBANDS__xxx'], variables=[f'{nbands}  # NELECT / 2 + NIONS / 4'])
+
         # shutil.copy(POSCAR_file, '.')
         write('POSCAR', snapshot, format='vasp')
         shutil.copy(f'{template_folder}/KPOINTS', '.')
-        os.symlink(f'{template_folder}/POTCAR', 'POTCAR')
         if use_vdw_kernel_file:
             os.symlink(f'{template_folder}/vdw_kernel.bindat',
                        'vdw_kernel.bindat')

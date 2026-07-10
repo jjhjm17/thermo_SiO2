@@ -15,6 +15,7 @@ from ...util.SiO2_parameter import (Si_O_Al__Z_of_type_lammps,
                                     spec_order_POSCAR_to_LAMMPS)
 from a_parameters import calc_folder, random_seed, structures, symbols
 import a_parameters
+import a_parameters as param
 
 
 def make_folders():
@@ -55,9 +56,14 @@ def make_folders():
             my_atoms = set_actual_atom_symbols(my_atoms,
                 atom_symbol_tuple)
         elif format == 'lammps-data':
+            if hasattr(param, 'atom_style_in'):
+                atom_style = param.atom_style_in
+            else:
+                atom_style='atomic'
             # lammps-data
-            my_atoms = read(cfg_path, format=format, atom_style='atomic',
+            my_atoms = read(cfg_path, format=format, atom_style=atom_style,
                             Z_of_type=Z_of_type)
+        my_atoms.wrap()
         print(f'  {my_atoms}')
         if i_config == 0:
             print('Please check the first structure visually.')
@@ -82,8 +88,14 @@ def make_folders():
         # copy(f'../../{config_file}', 'input_structure.dataf')
         # write('input_structure.dataf', my_atoms, format='lammps-data',
         #       spec_order=['Si', 'O', 'H', 'Al'])
-        write('coords.dataf', my_atoms, format='lammps-data',
-              specorder=spec_order_POSCAR_to_LAMMPS)
+        if hasattr(param, 'charge') and param.charge:
+            for atom in my_atoms:
+                atom.charge = 0
+            write('coords.dataf', my_atoms, format='lammps-data',
+                  specorder=spec_order_POSCAR_to_LAMMPS, atom_style='charge')
+        else:
+            write('coords.dataf', my_atoms, format='lammps-data',
+                  specorder=spec_order_POSCAR_to_LAMMPS)
         with open('../../jobList', 'a') as file:
             file.write(f'{os.getcwd()}\n')
         os.chdir('..')

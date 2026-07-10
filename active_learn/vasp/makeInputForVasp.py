@@ -5,6 +5,7 @@ import os
 import sys
 import shutil
 import subprocess
+from pathlib import Path
 from collections import Counter
 import numpy as np
 import ase
@@ -101,6 +102,11 @@ def get_atoms_and_forces(param):
         #            config in configs]
         # atoms_and_forces = [{'atoms': config, 'forces':
         #                      np.zeros((len(config),3))} for config in configs]
+    elif hasattr(param, 'CONTCARs'):
+        CONTCAR_files = param.CONTCARs
+        configs = []
+        for CONTCAR_file in CONTCAR_files:
+            configs.append(read(CONTCAR_file, format='vasp'))
     elif hasattr(param, 'xyz_s'):
         configs = []
         for xyz_file in param.xyz_s:
@@ -112,9 +118,27 @@ def get_atoms_and_forces(param):
         #                      np.zeros((len(config),3))} for config in configs]
     elif hasattr(param, 'dump_s'):  # lammps dump file
         configs = []
+        if hasattr(param, 'atom_symbols_input_lmp'):
+            atom_symbols = param.atom_symbols_input_lmp
+        else:
+            atom_symbols = param.atom_symbols_in_output_cfg
+        if hasattr(param, 'dump_index'):
+            dump_index = param.dump_index
+        else:
+            dump_index = ':'
         for dump_file in param.dump_s:
             configs += read_SiO2(dump_file,
-                                 atom_symbols=param.atom_symbols_in_output_cfg,
+                                 atom_symbols=atom_symbols,
+                                 index=dump_index)
+    elif hasattr(param, 'dataf_s'):  # lammps data file
+        configs = []
+        if hasattr(param, 'atom_symbols_input_lmp'):
+            atom_symbols = param.atom_symbols_input_lmp
+        else:
+            atom_symbols = param.atom_symbols_in_output_cfg
+        for dataf_file in param.dataf_s:
+            configs += read_SiO2(dataf_file,
+                                 atom_symbols=atom_symbols,
                                  index=':')
 
     configs = [sort_config_by_POTCAR_order(config,
@@ -153,6 +177,7 @@ def makeInputForVasp():
     # print(atoms_and_forces[0]['atoms'].get_positions())
     if os.path.exists('jobList'):
         os.remove('jobList')
+    start_dir = Path.cwd()
     if not os.path.exists(calc_folder):
         os.mkdir(calc_folder)
     os.chdir(calc_folder)
@@ -194,7 +219,13 @@ def makeInputForVasp():
 
 
         # POSCAR
-        ase.io.write('POSCAR', snapshot, vasp5=True)
+        if hasattr(param, 'CONTCARs'):
+            path = Path(param.CONTCARs[i_structure])
+            if not path.is_absolute():
+                path = start_dir / path
+            shutil.copy(path, 'POSCAR')
+        else:
+            ase.io.write('POSCAR', snapshot, vasp5=True)
 
         # POTCAR
         pbepot_shell = read_output('echo $pbepot').split()

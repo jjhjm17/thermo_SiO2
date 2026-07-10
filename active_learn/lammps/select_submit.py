@@ -8,6 +8,7 @@ from ...util.util import (shell, if_exists_delete_file, if_exists_delete_make,
                           fill_blanks)
 from a_parameters import calc_folder, num_seeds, server
 import a_parameters
+import a_parameters as param
 
 def collect_preselected():
     """This function collects preselected configurations."""

@@ -3,7 +3,9 @@ import os
 import sys
 import shutil
 import subprocess as sub
+import numpy as np
 from datetime import datetime
+from thermo_SiO2.util.SiO2_parameter import POTCAR_setup
 
 def shell(command):
     """This function runs a shell command."""
@@ -86,3 +88,26 @@ def fill_blanks(file, blanks, variables):
             out_file.write(line)
     os.remove(file)
     os.rename(f'{file}_new', file)
+
+def unique_ordered_list(seq):
+    """This function returns the unique ordered list of a sequence seq."""
+    # https://stackoverflow.com/questions/480214/how-do-i-remove-duplicates-from-a-list-while-preserving-order
+    seen = set()
+    seen_add = seen.add
+    # see.add(x) is always False, but calling add(x) adds x to the set.
+    return [x for x in seq if not (x in seen or seen_add(x))]
+
+
+def make_POTCAR(config):
+    """This function makes POTCAR from POSCAR. We assume no _sv or _pv
+    POTCARS, but use the one under the symbol folder, for example,
+    $pbepot/Si/POTCAR for Si."""
+    all_symbols = config.get_chemical_symbols()
+    unique_symbols = unique_ordered_list(all_symbols)
+    # print(f'{unique_symbols =}')
+    POTCAR_files = [f'$pbepot/{POTCAR_setup[symbol]}/POTCAR' for symbol in unique_symbols]
+    command = 'cat ' + ' '.join(POTCAR_files) + ' > POTCAR'
+    # print(f'{command =}')
+    shell(command)
+    return all_symbols, unique_symbols
+

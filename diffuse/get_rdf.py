@@ -9,7 +9,8 @@ from ase.geometry.analysis import Analysis
 # from ase.atoms import Atoms
 from ase.atom import Atom
 from ..mlip.read import read_SiO2
-from a_parameters import file, rmax, nbins, index, atom_symbols, elements_rdf
+from a_parameters import file, rmax, nbins, index, elements_rdf
+import a_parameters as param
 
 
 def get_rdf():
@@ -18,7 +19,13 @@ def get_rdf():
     #             specorder=specorder)
     # if isinstance(configs[0], Atom):
     #     configs= [configs]  # configs
-    configs = read_SiO2(file, atom_symbols=atom_symbols, index=index)
+    # breakpoint()
+    suffix = file[-4:]
+    if 'cfg' in suffix or 'dump' in suffix:
+        atom_symbols = param.atom_symbols
+        configs = read_SiO2(file, atom_symbols=atom_symbols, index=index)
+    else:
+        configs = read(file, index=index)
     print(f'{len(configs)} configs., {configs[0] = }')
     ana = Analysis(configs)
 

@@ -19,6 +19,7 @@ def view_SiO2():
 
     parser = argparse.ArgumentParser(
         description='Shows SiO2 structures in lammps or mlip format.')
+    parser.add_argument("files", nargs="+", help="One or more structure files to view.")
     parser.add_argument('--verbose', '-v', action='store_true')  # on/off
     parser.add_argument('--SiOAl', '-Al', '-al', action='store_true',
                        help='The order of atoms is Si O Al')
@@ -26,27 +27,30 @@ def view_SiO2():
                        help='The order of atoms is Si O Y')
     parser.add_argument('--wrap', '-w', action='store_true',
                        help='Wrap atoms')
-    # parser.add_argument("file")
-    parser.add_argument("files", nargs="+", help="One or more structure files to view.")
+    parser.add_argument('--atom_symbols', '-s', type=str,
+                       help="atom_symbols, ex) 'O H'", default='Si O H Al')
     args = parser.parse_args()
-    # file = args.file
     files = args.files
     if args.SiOAl:
         atom_symbols = 'Si O Al'
     elif args.SiOY:
         atom_symbols = 'Si O Y'
     else:
-        atom_symbols = 'Si O H Al'
+        # atom_symbols = 'Si O H Al'
+        atom_symbols = args.atom_symbols
 
     all_configs = []
-    for file in files:
-        configs = read_SiO2(file, atom_symbols)
+    silent = True
+    for ind, file in enumerate(files):
+        configs = read_SiO2(file, atom_symbols, silent=silent)
         # print(f'{configs = }')
         all_configs.extend(configs)
+    print(f'{len(all_configs)} snapshot(s).')
+    print(f'{all_configs[0] = }')
 
     if args.verbose:
-        for config in all_configs:
-            print(config)
+        for i_cfg, config in enumerate(all_configs):
+            print(f'{i_cfg}  {config}')
     if args.wrap:
         for config in all_configs:
             config = config.wrap()

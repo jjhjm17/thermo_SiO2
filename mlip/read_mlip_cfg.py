@@ -5,7 +5,7 @@ import numpy as np
 import ase
 from ase.io import write
 from ase.calculators.singlepoint import SinglePointCalculator
-from mlippy.atms import ase_loadcfgs
+from thermo_SiO2._vendor.mlippy.atms import ase_loadcfgs
 from ..util.SiO2_parameter import (atomic_symbol_to_number,
         atomic_number_to_POTCAR_order)
 from .read_config import sort_config_by_POTCAR_order
@@ -177,6 +177,15 @@ def read_mlip_cfg_mlippy(filename, atom_symbol_tuple={0: 'X'}, index=':'):
         if not hasattr(config, "calc") or config.calc is None:
             if hasattr(config, 'forces'):
                 results = {'energy': config.energy, 'forces': config.forces}
+                if hasattr(config, 'stresses') and config.stresses is not None:
+                    virials_ev = np.array(config.stresses)
+                        # unit: eV
+                    volume = config.get_volume()
+                    results['stress'] = - virials_ev / volume
+                        # unit: eV/Ang^3
+                        # mlip-2 Plusstress:
+                        # " Positive stresses correspond to 
+                        # compressed configurations" (manual)
                 config.calc = SinglePointCalculator(atoms=config, **results)  # dummy calculator
     # print(config_list[0].forces)
     # print(config_list[0].get_forces())

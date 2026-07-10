@@ -8,3 +8,5 @@ __pycache__/
 
 # Vim swap files:
 .*.sw?
+
+.vscode

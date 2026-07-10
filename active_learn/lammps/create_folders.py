@@ -13,6 +13,7 @@ from ...util.util import (get_lammps_random_seed, set_actual_atom_symbols,
                           fill_blanks)
 from ...util.SiO2_parameter import (Si_O_H_Al_atom_symbol_tuple_lammps,
                                     Si_O_Al_atom_symbol_tuple_lammps)
+from thermo_SiO2.io import read_sil
 
 def create_folders():
     """This function creates folders and prepares jobs."""
@@ -22,17 +23,21 @@ def create_folders():
 
     if use_initial_config:
         # structure_file = './hole_datafs/lammps.dataf_0'
-        structure_file = initial_config
-        my_atoms = read(structure_file, format='lammps-data', style='atomic')
-        if symbols == 'Si O H Al':
-            atom_symbol_tuple = Si_O_H_Al_atom_symbol_tuple_lammps
-        elif symbols == 'Si O Al':
-            atom_symbol_tuple = Si_O_Al_atom_symbol_tuple_lammps
-        else:
-            print("Error: the 'symbols' variable is not properly set.")
-            sys.exit()
-        my_atoms = set_actual_atom_symbols(my_atoms,
-                atom_symbol_tuple)
+        if type(initial_config) is str:
+            structure_file = initial_config
+        else:  # list
+            structure_file = initial_config[0]
+        # my_atoms = read(structure_file, format='lammps-data', style='atomic')
+        # if symbols == 'Si O H Al':
+        #     atom_symbol_tuple = Si_O_H_Al_atom_symbol_tuple_lammps
+        # elif symbols == 'Si O Al':
+        #     atom_symbol_tuple = Si_O_Al_atom_symbol_tuple_lammps
+        # else:
+        #     print("Error: the 'symbols' variable is not properly set.")
+        #     sys.exit()
+        # my_atoms = set_actual_atom_symbols(my_atoms,
+        #         atom_symbol_tuple)
+        my_atoms = read_sil(structure_file, atom_symbols=param.symbols)
         print(my_atoms)
         view(my_atoms)
         print('Please check the structure visually.')
@@ -91,8 +96,17 @@ def create_folders():
         # shutil.copy(f'../../hole_datafs/lammps.dataf_{index_seed}',
         #         'lammps.dataf')
         if use_initial_config:
-            shutil.copy(f'../../{initial_config}',
-                    'lammps.dataf')
+            if type(initial_config) is str:
+                shutil.copy(f'../../{initial_config}',
+                        'lammps.dataf')
+            else:  # list
+                path_in = initial_config[index_seed]
+                if path_in[0] == '.':  # relative path
+                    path = f'../../{path_in}'
+                else:
+                    path = path_in
+                shutil.copy(path,
+                        'lammps.dataf')
         with open('../../jobList', 'a') as file:
             file.write(f'{os.getcwd()}\n')
         print(f'{calc_subfolder} ', end='')

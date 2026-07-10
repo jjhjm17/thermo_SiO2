@@ -1,0 +1,16 @@
+
+using the s-dftd3 wrapper
+
+Without the worker (persistent s-dftd3), 
+export OMP_NUM_THREADS=1; python c_test_d3_wrapper.py
+    gives Average time: 0.991 s
+export OMP_NUM_THREADS=48; python c_test_d3_wrapper.py
+    Average time: 0.058 s
+
+export OMP_NUM_THREADS=1; time  s-dftd3 POSCAR --zero pbe --grad --json
+real    0m1.006s
+export OMP_NUM_THREADS=48; time  s-dftd3 POSCAR --zero pbe --grad --json
+real    0m0.106s
+export OMP_NUM_THREADS=48; time  s-dftd3 POSCAR --zero pbe --grad --json > /dev/null 2>&1
+real    0m0.093s
+

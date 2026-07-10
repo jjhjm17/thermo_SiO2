@@ -4,7 +4,7 @@
 import os
 import numpy as np
 from ase.io import read, write
-from mlippy.atms import ase_savecfgs
+from thermo_SiO2._vender.mlippy.atms import ase_savecfgs
 from a_parameters import calc_folder, structures
 from ...util.util import read_output, set_actual_atom_symbols
 from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_lammps

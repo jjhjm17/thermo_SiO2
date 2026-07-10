@@ -1,0 +1,128 @@
+Is this IR script from the lammps trajectory correct? What are some possible references?
+
+
+Marshaled academic references to validate LAMMPS script analysis
+Marshaled academic references to validate LAMMPS script analysis
+The overall approach — Fourier-transforming the dipole (or dipole-derivative) autocorrelation function to get an IR spectrum — is a standard and legitimate technique for MD-derived IR spectra. The core physics in the script is broadly sound, but there are several things worth checking or tightening up.
+
+What's correct
+
+Using dμ/dt instead of μ and skipping the extra ω² factor (if not use_gradient: ir_intensity *= freq_cm**2) is handled consistently — this is the correct way to avoid double-counting, since FT[dμ/dt] already carries one factor of iω relative to FT[μ].
+The dt_cm = dt_fs * 2.99793e-5 trick (using "distance light travels in dt" as the FFT time unit) is a standard way to get fftfreq output directly in cm⁻¹ instead of Hz — that's correct.
+Applying a Hann window to the truncated correlation function before the final FFT is a reasonable, common way to suppress spectral leakage/ringing from truncating the autocorrelation at cut_autocorr.
+Summing over x, y, z components before FFT is the right way to get an isotropic (orientationally averaged) spectrum.
+Things I'd flag as potential issues
+
+The two computation paths diverge, and only one is used. The script computes ir_intensity from windowed mu_f = fft(mu*win) (direct FFT approach), and separately computes ir_scipy from scipy.signal.correlate → Hann-windowed → FFT. Only ir_scipy/freq_cm_scipy are ever saved or plotted — ir_intensity is computed, normalized, and then discarded. This isn't wrong, but it's dead code that could confuse future readers (or you, in six months). Worth deleting or clearly marking as "debug only."
+No quantum correction factor. Classical dipole-autocorrelation spectra systematically misrepresent intensities relative to experiment (violates detailed balance, misses zero-point effects), especially at higher frequencies. If you intend to compare peak intensities (not just positions) to experimental IR spectra, you'd typically apply a harmonic/Kubo correction factor, e.g. multiplying by ω·tanh(ħω/2kT) or similar (see references below). Currently the script has no such factor.
+cut_autocorr truncation and frequency resolution. Your frequency resolution is set by the length of the correlation window you keep (Δν ≈ 1/(cut_autocorr_fs · c)), not by the full trajectory length. With the 1000 fs default, resolution is fairly coarse (~33 cm⁻¹) — fine for identifying broad peaks, but worth increasing cut_autocorr if you need to resolve closely-spaced or low-frequency (e.g., librational, H-bond) modes.
+Unnormalized correlation function. scipy.signal.correlate(..., mode='full') doesn't divide by the number of overlapping points at each lag, so it's a biased estimator that weights small lags more reliably than large ones. This is a common simplification (and mostly harmless if cut_autocorr is well within the total trajectory length), but it's worth being aware of — don't push cut_autocorr close to the full trajectory length or edge effects will bias the shape.
+Implicit assumption that dt_fs matches the actual sampling interval in dipole_file. The time column (data[:,0]) is loaded but never checked against dt_fs — if your dump frequency ever changes, the spectrum will be silently wrong. A quick np.diff(data[:,0]) sanity check against dt_fs would be cheap insurance.
+Minor: subtracting the mean after np.gradient is redundant (derivative of a constant already vanishes) but harmless.
+None of these are "bugs" that would produce garbage output for a typical case — the method is a reasonably faithful implementation of the standard velocity-dipole-autocorrelation FFT approach used in the AIMD/classical-MD IR spectroscopy literature.
+
+Some references for the method / conventions used here
+
+Berens, P. H. & Wilson, K. R., J. Chem. Phys. 74, 4872 (1981) — one of the original papers on computing IR line shapes from MD dipole autocorrelation functions.
+Ramírez, R., López-Ciudad, T., Kumar P., P. & Marx, D., "Quantum corrections to classical time-correlation functions: hydrogen bonding and anharmonic floppy modes," J. Chem. Phys. 121, 3973 (2004) — the standard reference for quantum correction factors applied to classical dipole-autocorrelation IR spectra. 
+ACS Publications
+Iftimie, R. & Tuckerman, M. E., J. Chem. Phys. 122, 214508 (2005) — ab initio MD approach to IR spectra including the "flux" formulation, relevant if you ever move beyond the simple point-dipole picture.
+Gaigeot, M.-P. & Sprik, M., or more generally the review by Thomas, M., Brehm, M., Fligg, R., Vöhringer, P. & Kirchner, B., Phys. Chem. Chem. Phys. 15, 6608 (2013) — good overview of computing vibrational spectra (IR/Raman) from MD trajectories via correlation functions, including practical windowing/truncation advice.
+The TRAVIS trajectory-analysis software paper, Brehm, M. & Kirchner, B., J. Chem. Inf. Model. 51, 2007 (2011) — widely used, well-documented open-source implementation of exactly this DACF→FFT pipeline; useful for cross-checking conventions (windowing, normalization, correction factors).
+Inakollu, V. S. S. & Yu, H., J. Comput. Chem. 39, 2067 (2018) — "systematic benchmarking of computational vibrational spectroscopy... FFT dipole autocorrelation function," directly relevant to the FT-DAC method used here.
+If it'd help, I can also refactor the script to drop the unused ir_intensity branch and/or add a Ramírez-style quantum correction factor as an optional flag.
+
+I wrote it, Could I use it for publication? Or ar there open source alternatives? Which is better?
+
+
+Evaluated open-source tool suitability for publication purposes
+Evaluated open-source tool suitability for publication purposes
+Short answer: yes, you can absolutely use your own script for a publication — plenty of published IR-from-MD spectra were generated with in-house scripts very similar to this one. But "can" and "should, without further work" are different questions, and there's a strong, well-established open-source alternative worth knowing about: TRAVIS.
+
+Can you publish with your own script?
+
+Yes, scientifically there's nothing wrong with using custom analysis code, and reviewers generally don't require you to use a "named" tool. What they (and readers) will care about is:
+
+Validation. Before trusting the numbers for a paper, run it on a system with a known answer — gas-phase CO₂ or H₂O are the classic sanity checks (well-characterized peak positions/relative intensities) — and confirm your peaks land where they should.
+Reproducibility. If code isn't shared, results are hard to independently verify. Many journals now expect a code-availability statement for anything computational; putting the script on GitHub/Zenodo with a DOI is cheap insurance and makes reviewers' lives easier.
+The gaps I flagged earlier — no quantum correction factor, the unused ir_intensity branch, the cut_autocorr/resolution tradeoff — are worth resolving or at least explicitly justifying in the methods section before you rely on it for publication-grade intensities. Peak positions from your current script are probably fine as-is; peak intensities compared quantitatively to experiment are where the missing quantum correction would bite hardest.
+The main open-source alternative: TRAVis
+
+TRAVIS ("TRajectory Analyzer and VISualizer", Brehm & Kirchner, J. Chem. Inf. Model. 2011) is the tool most people in this space reach for. Relevant points:
+
+It's able to read LAMMPS trajectory files directly, alongside XYZ, PDB, DL_POLY, Amber, and others. 
+nih
+It has built-in functions to calculate the power spectrum, IR spectrum, and Raman spectrum from dipole/velocity autocorrelation functions, plus various windowing options and (importantly) quantum correction factors baked in. 
+Ubuntu
+It's open source, actively maintained, and has an extensive published-methodology paper you can cite directly, which reviewers will recognize. 
+nih
+It's free, no external library dependencies, and widely cited (thousands of citations) — using it (or benchmarking against it) is a strong reproducibility signal in a paper.
+Which is "better"?
+
+Not a strict either/or — the strongest approach for publication is usually:
+
+Keep using your own script if it fits your workflow better (e.g. you need custom windowing, unusual dipole definitions, or tight integration with your other analysis code).
+Cross-validate it against TRAVIS on the same trajectory. If the peak positions/shapes match, that's strong evidence your pipeline is correct, and you can cite TRAVIS as a validation reference even while reporting numbers from your own tool.
+If you don't have a specific reason to keep your own script, just using TRAVIS directly for the published numbers saves you the validation burden entirely — it's a known quantity to reviewers.
+If your target system needs quantitative intensity comparison to experiment (not just peak positions), I'd lean toward either adding a quantum correction factor to your script or using TRAVIS's built-in one, since that's the piece most likely to make classical MD-derived intensities look "off" relative to experimental IR spectra.
+
+I wanted to use TRAVIS but it's written in c and I work with python
+
+
+Disambiguated search results and leveraged existing knowledge
+Disambiguated search results and leveraged existing knowledge
+Good news: you don't actually need to touch C++ to use TRAVIS. It's a compiled command-line executable, not a library — you install/build it once, then drive it entirely from the command line (or from a config/input file), and it produces plain text output files (spectra as x/y columns) that you read straight into numpy/pandas/matplotlib. Your Python code never has to know it's C++ underneath.
+
+How that looks in practice:
+
+Install: On Debian/Ubuntu it's packaged (sudo apt install travis), or you build it once from source (git clone + make, no ongoing C work — you're not writing or maintaining any C++, just compiling it like you would any binary dependency).
+Run it as a subprocess from Python: TRAVIS supports batch/non-interactive mode via a config file, so you can call it like any other external tool:
+python
+import subprocess
+subprocess.run(["travis", "-p", "trajectory.lmp", "-i", "travis.inp"], check=True)
+Read its output back into Python: TRAVIS writes the IR spectrum as a plain .csv/.dat file, which you load with np.loadtxt or pandas.read_csv and plot/post-process exactly like you're doing now.
+So the workflow is: LAMMPS trajectory → TRAVIS (black box, called from Python) → text file → your normal Python plotting/analysis. This is a very common pattern in computational chemistry pipelines — treat compiled scientific tools as subprocess calls rather than reimplementing them.
+
+If you'd genuinely rather stay in pure Python, a few points:
+
+There isn't a widely-adopted, well-validated pure-Python equivalent of TRAVIS specifically for IR/DACF spectra — this is part of why TRAVIS remains the de facto standard in the field despite being C++.
+i-PI's post-processing tools (Python, from the Ceriotti group) do compute vibrational spectra with proper quantum kernels, but they're built around i-PI's own trajectory format, so you'd need to reformat your LAMMPS dipole output — a similar amount of glue code as calling TRAVIS.
+Realistically, the lowest-effort path to a well-validated result is: keep your Python script for everything else (parsing LAMMPS output, plotting, whatever downstream analysis you're doing), and use TRAVIS only as the specific black-box step that computes the spectrum — called via subprocess, output parsed straight into your existing Python pipeline.
+Want me to help figure out the TRAVIS input format for your dipole file (or trajectory) so you could actually test this cross-check?
+
+It's hpc, I'm a user, python env is conda
+
+
+Navigated source compilation strategy for HPC environment
+Navigated source compilation strategy for HPC environment
+No conda-forge/bioconda package for TRAVIS exists — the name collides with "Travis CI" in search results, and it isn't distributed that way. But that's fine: as a regular HPC user with no root access, building it yourself is genuinely easy, because TRAVIS's whole selling point is zero external dependencies — it doesn't need any libraries beyond a C++ compiler.
+
+Building it as a normal user:
+
+bash
+# check what's available
+module avail | grep -i gcc      # most clusters have this
+module load gcc                # or whatever version is offered
+
+git clone https://github.com/Bereau-group/travis.git   # or download tarball from travis-analyzer.de
+cd travis/src
+make
+This produces a single binary (travis) with no sudo, no system install, no conda involved — it just needs g++/make, which nearly every HPC module system provides. Put the binary somewhere in your own space (e.g. $HOME/bin or $SCRATCH/software/bin) and add it to your PATH, or just reference it by full path.
+
+Then it's a normal subprocess call from your conda Python env:
+
+python
+import subprocess
+
+subprocess.run(
+    ["/home/you/bin/travis", "-p", "trajectory.lmp", "-i", "travis.inp"],
+    check=True,
+)
+No conda entanglement needed — TRAVIS runs completely outside your Python environment; your conda env only needs to be able to subprocess.run it and then read the output text file back in with numpy/pandas.
+
+A couple of HPC-specific things worth checking before you invest time in this:
+
+Run module avail | grep -i travis first — some clusters (especially chemistry-heavy ones) have it pre-installed as a module, since it's a fairly common tool in that community.
+Check whether your compute nodes allow outbound network access for git clone/wget; if not, you'll need to download the source on the login node (or your local machine) and scp it over.
+TRAVIS's interactive mode asks questions at a text prompt the first time you configure an analysis — for HPC batch use you'll want to either generate the config non-interactively once and then reuse it, or pipe answers in. Worth doing that config step interactively on a login node before wrapping it in a batch job.
+Want help sketching a minimal travis.inp config for computing an IR spectrum from a LAMMPS trajectory, so you have something concrete to test the build against?

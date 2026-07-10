@@ -4,7 +4,8 @@ import numpy as np
 from pathlib import Path
 from thermo_SiO2.util.util import read_output
 
-def diffusion_coef(calc_dirs='calc_*'):
+# def diffusion_coef(calc_dirs='calc_*'):
+def diffusion_coef_lmp_out(calc_dirs='calc_*'):
     txt = ''
     calc_dirs_glob = sorted(Path('./').glob(calc_dirs + '/'))
     for calc_dir in calc_dirs_glob:
@@ -30,7 +31,6 @@ def diffusion_coef(calc_dirs='calc_*'):
     with open('out_diff_coef.txt', 'w') as fout:
         print(txt)
         fout.write(txt)
-
 
 
 
