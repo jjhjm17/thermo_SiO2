@@ -4,6 +4,7 @@ Functions for the calculation of amorphous and mesoporous SiO2
 
 ## Features
 
+- generate lammps input files for amorphous silica (Al2O3)x/2(SiO2)y
 - active learning
 - diffusion analysis
 - pair distribution functions
@@ -28,9 +29,21 @@ NumPy
 SciPy
 ...
 
+Tested versions
+
+   Python 3.11, numpy 2.0.2, ase 3.23.0
+   OS: AlmaLinux 8
+   A high-performance computing cluster is required to run VASP, LAMMPS, and MLIP
+   calculations.
+   For IR: hiphive 1.4, phonopy-ir 28 May 2023
+   Optional: lammps-mtp-kokkos 1.0.0 (an optimized MTP implementation for LAMMPS,
+       https://github.com/RichardZJM/lammps-mtp-kokkos)
+
+
 ## Usage
 
-example commands
+- generate lammps input files for amorphous silica (Al2O3)x/2(SiO2)y
+   see examples/melt_quench/
 
 ## Repository structure
 

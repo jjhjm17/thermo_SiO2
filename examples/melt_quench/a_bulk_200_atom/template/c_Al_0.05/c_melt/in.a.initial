@@ -1,0 +1,134 @@
+include in.header
+
+
+# ---------- Create Atoms --------------------- 
+box tilt large
+#read_data dataf2
+# read_data start.dataf
+
+# region box block  0 ${alat_start}  0  ${alat_start}  0  ${alat_start}  # alat_start^3 Ang^3 box
+# read_data    lattice.dataf
+# xlo,xhi,ylo,yhi,zlo,zhi = bounds of untilted prism (distance units)
+#          prism xlo xhi ylo yhi zlo zhi xy xz yz
+region cell prism 0 ${alat_start}  0  ${alat_start}  0  ${clat_start}  ${xy_start} 0 0 # alat_start^3 Ang^3 box
+
+#           # number of atom types
+create_box  4 cell 
+
+#read_dump dump_atom 3000 x y z 
+# dump myDump all atom 1000 dump_atom 
+# dump myDump all atom 10 dump_atom   # debug
+# ---------- Define Interatomic Potential --------------------- 
+
+    # extrapolation_control=false &
+    # extrapolation_control:threshold_save=3  &
+# save=9: rough prediction
+
+# 3 Ang: short distance. avoid atoms to come too close together.
+# pair_style   hybrid/overlay   lj/cut 3 &
+#     mlip  &
+
+# pair_style   mlip  &
+#     load_from=${almtp_file}  &
+#     extrapolation_control=false &
+#     extrapolation_control:threshold_break=10  &
+#     extrapolation_control:threshold_save=3  &
+#     extrapolation_control:save_extrapolative_to=preselected.cfg
+pair_style mtp ${almtp_file}
+#                     epsilon  sigma, cutoff
+# pair_coeff * * lj/cut 0.001    1.8
+# pair_coeff * * mlip
+pair_coeff * *
+
+#pair_style tersoff
+#pair_coeff * * 2007_SiO.tersoff Si O
+
+mass 1 28.086  # amu, Si
+mass 2 15.999  # O
+mass 3 1.008   # H
+mass 4 26.982  # Al
+# mass 3 26.982 # Al
+
+neighbor 2.0 bin 
+neigh_modify delay 10 check yes 
+
+
+# region pore cylinder args = dim(z) &
+#   c1(x) &  # (vec_a + vec_b)/2 * \hat{x} = (xhi-xlo+xy)/2
+#   c2(y) &  # (vec_a + vec_b)/2 * \hat{y} = (yhi-ylo)/2
+#   radius lo hi
+#  xhi, ...: from lattice.dataf
+# # from the dump file, x = (xhi_bound - xlo_bound)/2
+# #                     y = (yhi_bound - ylo_bound)/2
+# region  pore_out  cylinder z &
+#     ${hole_center_x} &
+#     ${hole_center_y} &
+#     ${hole_radius}  EDGE EDGE    side out
+
+################
+# insertion
+
+change_box  all x scale ${scale_insert}  y scale ${scale_insert}  &
+    z scale ${scale_insert}  #  xy scale ${scale_insert}
+
+molecule SiO2_template ${struct_folder}/SiO2.txt
+# molecule AlO_template ${struct_folder}/AlO.txt
+# molecule AlO2_template ${struct_folder}/AlO2.txt
+molecule Al2O3_template ${struct_folder}/Al2O3.txt  # like Tom for now
+
+variable num_atoms equal "3 * v_num_SiO2 + 5 * v_num_Al2O3" 
+
+#            type offset N          seed    region-ID            template-ID  seed
+# if "${num_Al2O3} >= 1" then  &
+#     "create_atoms 0 random    ${num_Al2O3} ${seed} pore_out             mol AlO_template ${seed} maxtry $(1000*v_num_atoms) overlap ${cutoff}"  &
+#     "create_atoms 0 random    ${num_Al2O3} ${seed} pore_out             mol AlO2_template ${seed} maxtry $(1000*v_num_atoms) overlap ${cutoff}"
+# 
+# if "${num_SiO2} >= 1" then  &
+#     "create_atoms 0 random    ${num_SiO2} ${seed} pore_out             mol SiO2_template ${seed} maxtry $(1000*v_num_atoms) overlap ${cutoff}"
+
+if "${num_Al2O3} >= 1" then  &
+    "create_atoms 0 random    ${num_Al2O3} ${seed} NULL             mol Al2O3_template ${seed} maxtry $(1000*v_num_atoms) overlap ${cutoff}"
+
+if "${num_SiO2} >= 1" then  &
+    "create_atoms 0 random    ${num_SiO2} ${seed} NULL              mol SiO2_template ${seed} maxtry $(1000*v_num_atoms) overlap ${cutoff}"
+
+# ---------- Define computations and variables --------------------- 
+reset_timestep 0
+timestep ${dt}
+
+thermo 50
+
+velocity all create 0 ${seed} dist gaussian mom yes rot yes
+
+# change the box size to the original one
+# variable num_deform equal 500  # number of steps for deformation
+variable num_deform equal 2000  # number of steps for deformation
+# num_deform = 500 results in lost atoms for 3000 atoms.
+variable t_insert equal 1  # low
+# variable x_delta equal "v_alat_start * (v_rescale_insert - 1) / 2"
+# /2: for xlo and xhi
+#                        N (every this time step)
+# fix deform_ID all deform 1   x  delta ${x_delta} ${x_delta}   &
+#     y  delta ${x_delta} ${x_delta}  z delta ${x_delta} ${x_delta}
+
+#                       Tstart Tstop
+fix nvt_ID all nvt temp ${t_insert} ${t_insert}  $(100.0*dt) 
+fix deform_ID all deform 1   x  scale ${rescale_insert}  &
+    y  scale ${rescale_insert}  z scale ${rescale_insert}  remap none
+    # xy  scale ${rescale_insert}  remap none
+
+run             ${num_deform}
+unfix nvt_ID
+unfix deform_ID
+
+min_style quickmin
+min_modify dmax 0.05
+# pressure is set to zero because difference to 1 bar is negligible for low
+# compressibility solids and larger system sizes, convergence to target pressure
+# would take too long
+#            etol ftol maxiter maxeval
+minimize     1e-4 1e-1 100000 150000
+# write_data relaxed_initial_structure.dataf
+
+write_data initial.dataf
+

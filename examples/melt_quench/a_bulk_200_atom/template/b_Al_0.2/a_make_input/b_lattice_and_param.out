@@ -1,0 +1,17 @@
+input: cell_shape = 'cubic', alat = 14.5 Ang, clat = 14.5 Ang,  formula_num_Si = 10, formula_num_Al = 2
+
+ output: formula_num_O = 23
+Al_Si_ratio = 0.200  mole_ratio_SiO2  = 0.909
+mole_ratio_Al2O3 = 0.0909
+density_Al2O3_SiO2 = 2.284 g/cm^3   volume = 3048.625 Ang^3
+hole_radius = 1e-06, volume = 3048.6249999999545
+mass_formula = 702.80, mass_cell = 4192.58, num_formula = 6
+num_Si = 60, num_O = 138, num_Al = 12, num_atom = 210
+num_SiO2 = 60, num_Al2O3 = 6
+
+ We adjust the cell size by 'scale' to obtain the experimental density.
+scale = 1.0019
+alat_scaled = 14.5279 Ang, clat_scaled = 14.5279 Ang.
+
+ read: in.header.blank
+ written: ../c_melt/in.header

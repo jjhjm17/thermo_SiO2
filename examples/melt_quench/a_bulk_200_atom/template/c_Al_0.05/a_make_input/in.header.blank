@@ -1,0 +1,41 @@
+#SOF
+variable dt equal 0.001   # 1 fs, time step
+variable Ndt_equilib equal 10000   
+# variable Ndt_equilib equal 100000   
+# variable tstart equal 295  # K  same as Prof. N. Hansen's work, 
+# J. Phys.Chem.C2023,127, 14374-14388
+# variable press equal 1  # bar, 100 kPa, pressure
+variable seed equal xxxSEEDxxx
+variable seed_2  equal "v_seed+10000"
+variable seed_3  equal "v_seed+20000"
+
+variable cutoff     equal 1.8  # check if all particles are inserted
+# 1.8 Ang > Al-O bond, 1.74 Ang.
+variable num_SiO2   equal xxx_num_SiO2_xxx
+variable num_Al2O3  equal xxx_num_Al2O3_xxx
+
+variable alat_start equal xxx_alat_start_xxx
+variable clat_start equal xxx_clat_start_xxx
+variable xy_start equal xxx_xy_start_xxx
+
+variable struct_folder string '/home/atuin/a102cb/a102cb12/SiO2_mesoporous/b.MTP/a.1.3_ENMAX/e.struct'
+
+variable almtp_file string xxx__almtp__xxx
+
+variable hole_center_x equal xxx_hole_center_x_xxx 
+variable hole_center_y equal xxx_hole_center_y_xxx 
+variable hole_radius equal xxx_hole_radius_xxx 
+
+variable scale_insert equal 1.3
+# variable scale_insert equal 1.4
+variable rescale_insert equal "1/v_scale_insert"
+
+
+# ---------- Initialize Simulation --------------------- 
+clear
+units metal  # Ang ps eV bar
+dimension 3
+boundary p p p
+atom_style atomic 
+atom_modify map array
+

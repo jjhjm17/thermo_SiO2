@@ -1,0 +1,113 @@
+include in.header
+
+# variable speed equal 100  # speed-up compared to full melt-uench
+# variable speed equal 10  # speed-up compared to full melt-uench
+variable speed equal 1  # speed-up compared to full melt-uench
+
+
+# ---------- Create Atoms ---------------------
+box tilt large
+read_data ./initial.dataf
+#read_dump dump_atom 3000 x y z
+# dump myDump all atom 10000 dump_atom  # 10 ps, debug
+# dump myDump all atom 1000 dump_atom  # 1 ps, debug
+
+# ---------- Define Interatomic Potential ---------------------
+# pair_style       mlip  &
+#     load_from=${almtp_file}  &
+#     extrapolation_control=false &
+#     extrapolation_control:threshold_break=10  &
+#     extrapolation_control:threshold_save=3  &
+#     extrapolation_control:save_extrapolative_to=preselected.cfg
+pair_style mtp ${almtp_file}
+pair_coeff * * 
+
+    # extrapolation_control=true &
+
+mass 1 28.086  # amu, Si
+mass 2 15.999  # O
+mass 3 1.008   # H
+mass 4 26.982  # Al
+# mass 3 26.982 # Al
+
+neighbor 2.0 bin
+neigh_modify delay 10 check yes
+
+# region pore cylinder args = dim(z) &
+#   c1(x) &  # (vec_a + vec_b)/2 * \hat{x} = (xhi-xlo+xy)/2
+#   c2(y) &  # (vec_a + vec_b)/2 * \hat{y} = (yhi-ylo)/2
+#   radius lo hi
+#  xhi, ...: from lattice.dataf
+# # from the dump file, x = (xhi_bound - xlo_bound)/2
+# #                     y = (yhi_bound - ylo_bound)/2
+# region  pore_out  cylinder z &
+#     ${hole_center_x} &
+#     ${hole_center_y} &
+#     ${hole_radius}  EDGE EDGE    side out
+
+# fix ID group-ID wall/region region-ID  style(lj126) epsilon(eV) sigma(Ang)  cutoff
+# fix  wall all     wall/region pore_out   lj126        0.001       1       2.5
+
+# ---------- Define computations and variables ---------------------
+
+timestep ${dt}
+
+velocity all create 300.0 ${seed}  dist gaussian mom yes rot yes
+
+# thermo 1000  # 1 ps
+thermo $(1400000/v_speed / 200)  # approx. 200 thermo outputs
+# 1440000/v_speed: sum of all steps
+thermo_style custom step vol temp etotal pe press density
+
+# Ref.: Al-SiO2 melt-quench, Julian Greif's master thesis, p.47
+#                         temp Tstart Tstop Tdamp
+# fix             1 all nvt temp 300.0 5000.0 0.1  # Tdamp 0.1 ps = 100 dt
+
+# Langevin
+# fix nve_ID all nve
+# 0.1 is damping parameter in ps (take reciprocal of our usual and divide by 1000; (1/0.01)/1000 --> 0.1)
+
+# For the active learning, we skip increasing T.
+
+#                   Tstart Tstop Tdamp
+# fix 1 all langevin  300    5000 0.1 ${seed} zero yes
+fix             1 all nvt temp 300  5000 0.1
+run             $(200000/v_speed)  # 200 ps / speed, fast for training
+shell   if [ -f preselected.cfg ]; then mv preselected.cfg preselected_1_300-5000K.cfg ;   fi
+# The next run command overwrites the existing preselected.cfg file.
+unfix           1
+
+# # We start directly at 5000 K, to get extreme structures.
+fix             1 all nvt temp 5000.0 5000.0 0.1
+run             $(200000/v_speed)  # 200 ps / speed
+unfix           1
+shell   if [ -f preselected.cfg ]; then mv preselected.cfg preselected_2_5000K.cfg ;   fi
+# The next run command overwrites the existing preselected.cfg file.
+
+fix             1 all nvt temp 5000.0 4000.0 0.1
+# fix 1 all langevin  5000    4000 0.1 ${seed} zero yes
+# run             100000  # 100 ps
+run             $(100000/v_speed)  # 100 ps / speed
+unfix           1
+shell   if [ -f preselected.cfg ]; then mv preselected.cfg preselected_4_4000-300K.cfg ;   fi
+
+# unfix nve_ID
+#                                                  Pstart Pstop Pdamp
+fix             1 all npt  temp 4000.0 300.0 0.1  iso 1 1 $(1000*v_dt)
+run             $(740000/v_speed)  # 740 ps / speed, 5 K/ps
+unfix           1
+shell   if [ -f preselected.cfg ]; then mv preselected.cfg preselected_4_4000-300K.cfg ;   fi
+
+fix             1 all npt  temp  300.0 300.0 0.1  iso 1 1 $(1000*v_dt)
+run             $(200000/v_speed)  # 200 ps / speed
+unfix           1
+shell   if [ -f preselected.cfg ]; then mv preselected.cfg preselected_5_300K.cfg ;   fi
+# 200 ps as in Tom's thesis
+
+
+
+# for restarting simulations from last system configuration
+# write_restart lammps.restart
+
+write_dump all atom last.dump modify scale no  sort id
+write_data  last.dataf
