@@ -182,6 +182,11 @@ def makeInputForVasp():
         os.mkdir(calc_folder)
     os.chdir(calc_folder)
 
+    if hasattr(param, 'template_dir'):
+        template_dir = param.template_dir
+    else:
+        template_dir = 'template'  # in the current folder ./
+
     for i_structure, this_atoms_and_forces in enumerate(atoms_and_forces):
         if hasattr(param, 'start_config_number'):
             if (i_structure < param.start_config_number) or (
@@ -215,7 +220,8 @@ def makeInputForVasp():
         mkdir_if_overwrite(folder,overwrite)
 
         os.chdir(folder)
-        shutil.copy('../../template/INCAR', '.')
+        # shutil.copy('../../template/INCAR', '.')
+        shutil.copy(f'../../{template_dir}/INCAR', '.')
 
 
         # POSCAR
@@ -254,12 +260,17 @@ def makeInputForVasp():
             fill_blanks('INCAR', blanks=['xxx__NBANDS__xxx'], variables=[f'{nbands}  # NELECT / 2 + NIONS / 4'])
 
         if (hasattr(param, 'preconverge') and param.preconverge):
-            if os.path.isfile('../../template/INCAR.preconverge.change'):
-                shutil.copy('../../template/INCAR.preconverge.change', '.')
-            elif os.path.isfile('../../template/INCAR.preconverge'):
-                shutil.copy('../../template/INCAR.preconverge', '.')
-                fill_blanks('INCAR.preconverge', blanks=['xxx__NBANDS__xxx'],
-                            variables=[f'{nbands}  # NELECT / 2 + NIONS / 4'])
+            # if os.path.isfile('../../template/INCAR.preconverge.change'):
+            if os.path.isfile(f'../../{template_dir}/INCAR.preconverge.change'):
+                # shutil.copy('../../template/INCAR.preconverge.change', '.')
+                shutil.copy(f'../../{template_dir}/INCAR.preconverge.change', '.')
+            # elif os.path.isfile('../../template/INCAR.preconverge'):
+            elif os.path.isfile(f'../../{template_dir}/INCAR.preconverge'):
+                # shutil.copy('../../template/INCAR.preconverge', '.')
+                shutil.copy(f'../../{template_dir}/INCAR.preconverge', '.')
+                if hasattr(param, 'nbands_less') and param.nbands_less:
+                    fill_blanks('INCAR.preconverge', blanks=['xxx__NBANDS__xxx'],
+                                variables=[f'{nbands}  # NELECT / 2 + NIONS / 4'])
             else:
                 print('Error: INCAR.preconverge.change or INCAR.preconverge '
                       'are not found.')
@@ -267,12 +278,14 @@ def makeInputForVasp():
 
         # os.symlink('../../template/POTCAR', 'POTCAR')
 
-        if os.path.isfile('../../template/KPOINTS'):
-            shutil.copy('../../template/KPOINTS', '.')
+        # if os.path.isfile('../../template/KPOINTS'):
+        if os.path.isfile(f'../../{template_dir}/KPOINTS'):
+            # shutil.copy('../../template/KPOINTS', '.')
+            shutil.copy(f'../../{template_dir}/KPOINTS', '.')
             # If there is no KPOINTS, then KSPACING tag is used.
 
-        if os.path.isfile('../../template/vdw_kernel.bindat'):
-            os.symlink('../../template/vdw_kernel.bindat', 'vdw_kernel.bindat')
+        if os.path.isfile(f'../../{template_dir}/vdw_kernel.bindat'):
+            os.symlink(f'../../{template_dir}/vdw_kernel.bindat', 'vdw_kernel.bindat')
         subprocess.run('pwd >> ../../jobList', shell=True, check=True)
         os.chdir('..')
     os.chdir('..')

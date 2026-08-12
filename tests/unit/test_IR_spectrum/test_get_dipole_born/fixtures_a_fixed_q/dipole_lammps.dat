@@ -1,0 +1,5 @@
+# Time-averaged data for fix dipOut
+# TimeStep c_ID_dipole[1] c_ID_dipole[2] c_ID_dipole[3]
+0 -327.514 721.971 689.177
+1 -327.472 721.984 689.172
+2 -327.426 722.002 689.158

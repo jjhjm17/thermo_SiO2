@@ -1,0 +1,8 @@
+dump_unfolded : 'fixtures_b_born/config.dump'
+atom_symbols : 'Si O H Al'
+
+# test_fixed_charge_Si_O_H_Al : True
+born_file : 'fixtures_b_born/BORN'
+dipole_out : null # null
+
+

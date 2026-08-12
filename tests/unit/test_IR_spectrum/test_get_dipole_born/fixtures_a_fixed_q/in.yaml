@@ -1,0 +1,7 @@
+dump_unfolded : 'fixtures_a_fixed_q/config.dump'
+atom_symbols : 'Si O H Al'
+
+test_fixed_charge_Si_O_H_Al : True
+dipole_out : null  # YAML null, python None
+
+
