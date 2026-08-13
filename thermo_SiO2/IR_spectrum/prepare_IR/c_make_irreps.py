@@ -5,5 +5,6 @@ from ...util.util import shell
 # Ref
 # https://github.com/skelton-group/Phonopy-Spectroscopy/tree/master/example/a-SiO2
 
-shell(f'phonopy --dim="{supercell_dim}" --readfc --hdf5 --fc-symmetry --irreps="0 0 0"')
+# shell(f'phonopy --dim="{supercell_dim}" --readfc --hdf5 --fc-symmetry --irreps="0 0 0"')
+shell(f'phonopy  --readfc-format hdf5 --hdf5 --no-sym-fc --irreps="0 0 0"')
 

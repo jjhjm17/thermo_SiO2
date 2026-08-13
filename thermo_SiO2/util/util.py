@@ -5,6 +5,7 @@ import shutil
 import subprocess as sub
 import numpy as np
 from datetime import datetime
+import yaml
 from thermo_SiO2.util.SiO2_parameter import POTCAR_setup
 
 def shell(command):
@@ -111,3 +112,12 @@ def make_POTCAR(config):
     shell(command)
     return all_symbols, unique_symbols
 
+
+def read_in_yaml(in_file='in.yaml'):
+    """This function reads in.yaml file and returns param variable."""
+    with open(in_file, 'r') as stream:
+        try:
+            param = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+    return param

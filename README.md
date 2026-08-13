@@ -35,7 +35,8 @@ Tested versions
    OS: AlmaLinux 8
    A high-performance computing cluster is required to run VASP, LAMMPS, and MLIP
    calculations.
-   For IR: hiphive 1.4, phonopy-ir 28 May 2023
+   For IR: phonopy 4.4.0, phonopy-ir 28 May 2023,
+       hiphive 1.4 (hiphive is needed if the effective hessians are used)
    Optional: lammps-mtp-kokkos 1.0.0 (an optimized MTP implementation for LAMMPS,
        https://github.com/RichardZJM/lammps-mtp-kokkos)
 

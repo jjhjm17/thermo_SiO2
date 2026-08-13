@@ -7,11 +7,12 @@ from scipy.signal import correlate
 import parameter as param
 
 
-def plot_debug(Y, label=''):
-    plt.figure(figsize=(7,5))
-    plt.plot(Y, label=label)
-    plt.legend()
-    plt.show()
+def plot_debug(Y, param, label=''):
+    if param.ir_fig_verbose:
+        plt.figure(figsize=(7,5))
+        plt.plot(Y, label=label)
+        plt.legend()
+        plt.show()
 
 def get_ir_dipole():
     """This function obtains the IR intensity using the autocorrelation of dipole moments, or FFT of dipole
@@ -31,6 +32,7 @@ def get_ir_dipole():
     # use_window = False
     use_gradient = True  # d mu / d t
     # use_gradient = False
+
     if hasattr(param, 'freq_range'):
         freq_range = param.freq_range
     else:
@@ -106,15 +108,15 @@ def get_ir_dipole():
     half = corr_result.size // 2  # floor div
     cut = int(cut_autocorr / dt_fs)  # unit of cut: point
     autocorr_scipy = autocorr_scipy[ (half - cut) : (half + cut) ]
-    plot_debug(autocorr_scipy, 'before the window')
+    plot_debug(autocorr_scipy, param, 'before the window')
     if use_window:
         # debug
         # autocorr_scipy = np.ones(2 * (N_sam) - 1)
         # autocorr_scipy[:(half - cut)] = 0
         autocorr_scipy *= hann(2*cut)
         # autocorr_scipy[(half + cut):] = 0
-        plot_debug(hann(2*cut), 'window')
-        plot_debug(autocorr_scipy, 'after the window')
+        plot_debug(hann(2*cut), param, 'window')
+        plot_debug(autocorr_scipy, param, 'after the window',)
     N_sam_scipy = len(autocorr_scipy)
     ir_scipy = np.abs(fft(autocorr_scipy)[0:N_sam_scipy//2])
     # np.abs is needed because fft multiplies by exp(i omega t), which is a complex number.
@@ -152,7 +154,8 @@ def get_ir_dipole():
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_plot, dpi=300)
-    plt.show()
+    if param.ir_fig_verbose:
+        plt.show()
 
     if get_autocorr:
         max_imag = np.max(np.abs(autocorr.imag))

@@ -32,7 +32,10 @@ def get_pdos():
                 pdos_string += f'{i_phonopy} '
     print(f'{pdos_string =}')
 
-    shell(f'phonopy --mesh="1 1 1" --sigma="{sigma_phonon}" --hdf5 --readfc -p -s --dim="{supercell_dim}" --pdos="{pdos_string}" ')
+    # shell(f'phonopy --mesh="1 1 1" --sigma="{sigma_phonon}" --hdf5 --readfc-format hdf5 -p -s --pdos="{pdos_string}" ')
+    shell(f'phonopy --mesh="1 1 1" --sigma="{sigma_phonon}" --hdf5 --readfc-format hdf5 --no-sym-fc -p -s --pdos="{pdos_string}" ')
+    # --no-sym-fc: do not symmetrize force constants. It takes > 1 hour, it uses symfc to diagonalize
+    # many matrices
 
     # Ref.
     # https://github.com/phonopy/phono3py/tree/master/example/Si-PBEsol
@@ -40,7 +43,8 @@ def get_pdos():
 
 get_pdos()
 
-shell(f'phonopy --mesh="1 1 1" --sigma="{sigma_phonon}" --hdf5 --readfc -p -s --dim="{supercell_dim}" ')
+# shell(f'phonopy --mesh="1 1 1" --sigma="{sigma_phonon}" --hdf5 --readfc -p -s --dim="{supercell_dim}" ')
+shell(f'phonopy --mesh="1 1 1" --sigma="{sigma_phonon}" --hdf5 --readfc-format hdf5 --no-sym-fc -p -s ')
 
 print('File written: partial_dos.pdf, projected_dos.dat')
 print('  total_dos.pdf, total_dos.dat')
