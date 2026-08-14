@@ -135,7 +135,7 @@ def get_ir_dipole():
     #            header="Frequency(cm^-1)  Intensity (AU)")
     np.savetxt(output_data,
                np.column_stack((freq_cm_scipy, ir_scipy)),
-               header="Frequency(cm^-1)  Intensity (AU)")
+               header="Frequency(cm^-1)  Intensity (AU)", fmt='%.6g')
 
 
 
