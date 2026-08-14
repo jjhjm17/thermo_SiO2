@@ -1,0 +1,14 @@
+cp /home/atuin/a102cb/a102cb12/SiO2_mesoporous/e.IR_spectrum/e.Al_SiO2_eq_mtp_water/a.pore_700_10cfg__mtp_12/c.charge/calc_result/sample_0_POSCAR .
+mv sample_0_POSCAR POSCAR
+cp /home/atuin/a102cb/a102cb12/SiO2_mesoporous/e.IR_spectrum/t.dipole_correlate/b.pore/a.test_MTP/a.300K/a.0.5fs/a.traj/config.dump .
+
+leave two atoms, 2 steps
+
+
+dipole_hand.dat:
+1st component was verified by hand
+3.54744139 * (-50.0802) + 0.21560684* (-31.8112) +0.47191330*( -22.8994)   + 3.68311262 * (-66.9856) -0.36109895*(-6.27693)+0.31415855*44.5964
+= -425.76039
+
+Others were done by Claude
+

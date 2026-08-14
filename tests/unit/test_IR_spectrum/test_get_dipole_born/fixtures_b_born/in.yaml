@@ -3,6 +3,8 @@ atom_symbols : 'Si O H Al'
 
 # test_fixed_charge_Si_O_H_Al : True
 born_file : 'fixtures_b_born/BORN'
+born_poscar : 'fixtures_b_born/POSCAR'
+
 dipole_out : null # null
 
 

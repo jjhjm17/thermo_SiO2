@@ -45,6 +45,12 @@ Tested versions
 
 - generate lammps input files for amorphous silica (Al2O3)x/2(SiO2)y
    see examples/melt_quench/
+- visualize mlip version 2, 3 cfg files, and lammps dump files using
+  ase gui with default 'Si O H Al' atomic symbols:
+    visi a.cfg
+    visi a.dump
+    visi a.dataf
+  For more information, see visi -h
 
 ## Repository structure
 

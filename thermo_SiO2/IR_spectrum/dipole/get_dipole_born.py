@@ -80,32 +80,29 @@ def get_dipole_born(in_file='in.yaml'):
                     atom_symbols=param['atom_symbols'])
     print('cfgs were read.')
 
-    # Check of born_poscar and dump file have the same atomic 
-    # structures, and the ordering of atomic symbols are the same.
-    cfg_born = read(param['born_poscar'])
-    cfg0 = cfgs[0]
-    if not (cfg0.symbols == cfg_born.symbols).all():
-        # .all(): if all values are true
-        raise ValueError('The atomic symbols of born_poscar and the dump file are differernt.')
-    elif not (cfg0.cell == cfg_born.cell).all():
-         # .all(): if all values are true
-         raise ValueError('The cells of born_poscar and the dump file are differernt.')
-
-    dr = cfg0.positions - cfg_born.positions 
-    _, dr_dist = find_mic(dr, cell=cfg0.cell, pbc=cfg0.pbc)
-    dr_max = np.max(dr_dist)
-    print(f'The max displacement between the positions of born_poscar and dump file: {dr_max:.2f} Ang.')
-
-    if 5 > dr_max > 3:
-        print(f'\nWarning: The max displacement between the positions of born_poscar and dump file is large, {dr_max:.2f} Ang. please check if the structures are the same, and the atomic order is not changed.\n') 
-    elif dr_max >= 5:
-        raise ValueError(f'The max displacement between the positions of born_poscar and dump file is very large, {dr_max:.2f} Ang. Please check if the structures are the same, and the atomic order is not changed.') 
-
-
-    # check the structures, especially the atomic order
-    # of vasp POSCAR and dump.
-
     
+    if not param.get('test_fixed_charge_Si_O_H_Al', False):
+        # Check of born_poscar and dump file have the same atomic 
+        # structures, and the ordering of atomic symbols are the same.
+        cfg_born = read(param['born_poscar'])
+        cfg0 = cfgs[0]
+        if not (cfg0.symbols == cfg_born.symbols).all():
+            # .all(): if all values are true
+            raise ValueError('The atomic symbols of born_poscar and the dump file are differernt.')
+        elif not (cfg0.cell == cfg_born.cell).all():
+             # .all(): if all values are true
+             raise ValueError('The cells of born_poscar and the dump file are differernt.')
+
+        dr = cfg0.positions - cfg_born.positions 
+        _, dr_dist = find_mic(dr, cell=cfg0.cell, pbc=cfg0.pbc)
+        dr_max = np.max(dr_dist)
+        print(f'The max displacement between the positions of born_poscar and dump file: {dr_max:.2f} Ang.')
+
+        if 5 > dr_max > 3:
+            print(f'\nWarning: The max displacement between the positions of born_poscar and dump file is large, {dr_max:.2f} Ang. please check if the structures are the same, and the atomic order is not changed.\n') 
+        elif dr_max >= 5:
+            raise ValueError(f'The max displacement between the positions of born_poscar and dump file is very large, {dr_max:.2f} Ang. Please check if the structures are the same, and the atomic order is not changed.') 
+
 
     dipole_out = param.get('dipole_out')
 
