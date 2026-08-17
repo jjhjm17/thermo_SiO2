@@ -15,7 +15,7 @@ def plot_debug(Y, verbose, label=''):
 
 def compute_ir_from_dipole_components(mu_components, dt_fs, use_window=True,
                                        use_gradient=True, cut_autocorr=1000,
-                                       normalize=True, verbose=False):
+                                       verbose=False):
     """Compute an isotropic IR spectrum from a set of dipole-moment (or
     dipole-like, e.g. an O-H bond vector times a formal charge) Cartesian
     components, via the dipole-autocorrelation-function (DACF) -> window
@@ -46,16 +46,6 @@ def compute_ir_from_dipole_components(mu_components, dt_fs, use_window=True,
             (~ 1 / (cut_autocorr * c)), not by the full trajectory
             length; see the MACE4IR paper. Silently capped at the
             trajectory length if a longer value is given.
-        normalize : bool
-            If True (default), rescale so that max(ir) == 1 -- this is
-            what get_ir_dipole() has always done, and is fine when only
-            a single spectrum is plotted. Set to False to keep the raw
-            (unscaled) intensity, which is needed to compare relative
-            intensities *between* separately-computed spectra (e.g. the
-            partial spectrum of one O-H bond vs. another, in
-            get_OH_vectors_ir.py) -- with normalize=True each spectrum's
-            own peak is forced to 1, so such comparisons would be
-            meaningless.
         verbose : bool
             If True, show debug plots of the autocorrelation function
             before/after windowing (useful when tuning cut_autocorr).
@@ -64,9 +54,7 @@ def compute_ir_from_dipole_components(mu_components, dt_fs, use_window=True,
         freq_cm : 1D array
             Wavenumber (cm^-1), positive-frequency half only.
         ir : 1D array
-            Intensity. Normalized so that max(ir) == 1 if normalize is
-            True; otherwise the raw (arbitrary but internally
-            consistent) intensity from the FFT.
+            Intensity, normalized so that max(ir) == 1.
     """
     N_sam = len(mu_components[0])
     autocorr_scipy = np.zeros(N_sam * 2 - 1)
@@ -109,8 +97,7 @@ def compute_ir_from_dipole_components(mu_components, dt_fs, use_window=True,
     if not use_gradient:
         ir = ir * freq_cm[:len(ir)] ** 2  # omega^2
 
-    if normalize:
-        ir = ir / np.max(ir)
+    ir = ir / np.max(ir)
 
     return freq_cm, ir
 

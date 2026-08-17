@@ -7,9 +7,6 @@ Input
         OH_vector_H_indices : [700, 682]  # starts from 0
         OH_output_plot = "IR_spectrum_OH.pdf"
         OH_output_data = "IR_spectrum_OH.dat"
-        OH_normalize : False  # optional, default False; True normalizes
-            each partial spectrum to its own max = 1 (as ir.py does),
-            which makes different O-H bonds' peak heights NOT comparable
     OH_vectors.dat
 Output
     OH_output_plot: a plot of all partial IR's of OH vectors,
@@ -41,12 +38,8 @@ Procedure
        ir.compute_ir_from_dipole_components to get a partial IR
        spectrum.
     3. Save all partial spectra (sharing one frequency axis) to
-       OH_output_data, one intensity column per H index.
-       By default the spectra are NOT individually normalized (unlike
-       ir.py's own output), so that the relative peak heights of
-       different O-H bonds' spectra can be directly compared; set
-       OH_normalize: True in in.yaml to instead normalize each partial
-       spectrum to its own max = 1, as ir.py does.
+       OH_output_data, one intensity column per H index, each normalized
+       independently so that its own maximum is 1 (as in ir.py).
     4. Plot all partial spectra on one figure, one line per H index,
        with a legend giving the H atom index, and save to
        OH_output_plot.
@@ -58,12 +51,9 @@ from thermo_SiO2.IR_spectrum.dipole.ir import compute_ir_from_dipole_components
 
 # Formal charge assigned to H when converting an O-H bond vector into a
 # "dipole moment" for the FFT/autocorrelation method (see module
-# docstring). With OH_normalize: False (the default here), this constant
-# scales the absolute intensity of every partial spectrum by the same
-# factor, so it does not affect their *relative* heights; it matters
-# only if you want the absolute intensity to correspond to a real
-# dipole moment (e.g. to compare against ir.py's whole-cell spectrum,
-# also with normalize=False).
+# docstring). Since each partial spectrum is normalized to its own
+# maximum (max(ir) == 1), this constant has no effect on the saved
+# spectra; it is kept explicit for physical clarity / future reuse.
 H_FORMAL_CHARGE = 1.0
 
 
@@ -99,22 +89,15 @@ def write_OH_ir_data(out_file, freq_cm, ir_by_H):
                header=f'Frequency(cm^-1) {header_cols}', fmt='%.6g')
 
 
-def plot_OH_ir(out_file, freq_cm, ir_by_H, OH_vector_H_labels=False, freq_range=None, normalize=False):
+def plot_OH_ir(out_file, freq_cm, ir_by_H, freq_range=None):
     plt.figure(figsize=(7, 5))
-    for label_idx, (h_idx, ir) in enumerate(ir_by_H.items()):
-        if OH_vector_H_labels is not False:
-            label = OH_vector_H_labels[label_idx]
-        else:
-            label=f'H {h_idx}'
-        plt.plot(freq_cm, ir, linewidth=1.5, label=label)
+    for h_idx, ir in ir_by_H.items():
+        plt.plot(freq_cm, ir, linewidth=1.5, label=f'H {h_idx}')
     if freq_range is not None:
         plt.xlim(freq_range)
-    if normalize:
-        plt.ylim([0, 1.05])
-    else:
-        plt.ylim(bottom=0)  # let matplotlib pick the top, shared across curves
+    plt.ylim([0, 1.05])
     plt.xlabel("Wavenumber (cm$^{-1}$)")
-    plt.ylabel("Intensity (AU)")
+    plt.ylabel("Intensity")
     plt.legend()
     plt.tight_layout()
     plt.savefig(out_file, dpi=300)
@@ -138,12 +121,6 @@ def get_OH_vectors_ir(in_file='in.yaml'):
     use_gradient = param.get('use_gradient', True)  # d mu / d t
     cut_autocorr = param.get('cut_autocorr', 1000)  # fs  # see MACE4IR paper
     freq_range = param.get('freq_range', None)
-    # False by default: keep each partial spectrum's raw (unscaled)
-    # intensity, so the different O-H bonds' peak heights stay directly
-    # comparable to each other. Set OH_normalize: True in in.yaml to
-    # instead rescale each spectrum to its own max = 1 (as ir.py does).
-    normalize = param.get('OH_normalize', False)
-    OH_vector_H_labels = param.get('OH_vector_H_labels', False)
 
     oh_vectors = load_OH_vectors(OH_vectors_file, H_indices)
 
@@ -162,16 +139,14 @@ def get_OH_vectors_ir(in_file='in.yaml'):
         freq_cm_h, ir_h = compute_ir_from_dipole_components(
             [mu_x, mu_y, mu_z], dt_fs,
             use_window=use_window, use_gradient=use_gradient,
-            cut_autocorr=cut_autocorr, normalize=normalize,
+            cut_autocorr=cut_autocorr,
         )
         if freq_cm is None:
             freq_cm = freq_cm_h
         ir_by_H[h_idx] = ir_h
 
     write_OH_ir_data(OH_output_data, freq_cm, ir_by_H)
-    plot_OH_ir(OH_output_plot, freq_cm, ir_by_H, OH_vector_H_labels,
-               freq_range=freq_range,
-               normalize=normalize)
+    plot_OH_ir(OH_output_plot, freq_cm, ir_by_H, freq_range=freq_range)
 
     return freq_cm, ir_by_H
 
