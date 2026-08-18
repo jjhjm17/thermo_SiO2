@@ -3,3 +3,4 @@ atom_symbols : 'Si O H Al'
 
 OH_vector_H_indices : [1, 3]  # starts from 0; 1: H1 (bonded to O1), 3: H2 (bonded to O2)
 OH_vectors_out : null  # don't write a file during the test
+OH_analysis_out : null  # don't write a file during the test

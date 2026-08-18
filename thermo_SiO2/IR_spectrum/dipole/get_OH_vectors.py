@@ -3,11 +3,19 @@ vectors of selected Hs.
 
 Input
     in.yaml, e.g.
+
         OH_vector_H_indices : [700, 682]  # starts from 0
         # 700 : Si-OH, 682: Al-OH
+        OH_vector_H_labels : ['Si-OH', 'Al-OH']
+
+        or
+
+        OH_vector_H_all : True  # for all H's
+
         dump_unfolded : '../a.traj/config.dump'
         atom_symbols : 'Si O H Al'
         OH_vectors_out : 'OH_vectors.dat'   # optional, default 'OH_vectors.dat'
+        OH_analysis_out : 'OH_analysis.dat' # optional, default 'OH_analysis.dat'
 
 Output
     OH_vectors.dat
@@ -18,13 +26,24 @@ Output
     Each triplet is the OH bond vector (pointing from the bonded O atom to
     the H atom) for the corresponding H index in OH_vector_H_indices.
 
+    OH_analysis.dat
+       # H_index OH_type OH_bond_length (Ang) Wrapped_x Wrapped_y Wrapped_z (Ang)
+       700 Si-OH 0.9xx ... ... ...
+       682 Al-OH 0.9xx ... ... ...
+
+    OH_type is one of ['Si-OH', 'Al-OH', 'Al..OH2', 'Al-(OH)-Si',
+    'Al-(OH)-Al', 'Si-(OH)-Si', 'H2O', 'other'].
+    The bond length is from the 0th configuration, which is supposed to be
+    relaxed.
+
 Procedure
     It's similar to get_dipole_born.py, but instead of Born charges, we
     track individual O-H bond vectors.
 
     1. Open dump_unfolded file (unwrapped/unfolded LAMMPS-style trajectory)
        via thermo_SiO2.io.read_sil.
-    2. Using the first frame only, for each H atom in OH_vector_H_indices,
+    2. Select H atoms from OH_vector_H_indices, or select every H atom in
+       the first frame when OH_vector_H_all is True. For each selected H,
        find the bonded O atom: the nearest O atom under the minimum image
        convention (MIC), with bond length < 1.5 Ang (typical O-H bond
        length is ~1.0 Ang). Print the found O index and the bond length.
@@ -40,11 +59,29 @@ Procedure
        OH_vector_H_indices, apply the pair's stored shift to the O
        position ("wrap" it), then compute OH vector = H_pos - O_wrapped,
        and write out its components.
+
+    For OH_analysis.dat, OH_type is determined from the first-frame bond
+    graph. H2O requires an O bonded only to two H atoms, with each H bonded
+    only to that O. Other types use the Si and Al neighbors of the bonded
+    O atom. Bonds are found with ASE's neighbor_list() using covalent
+    radii multiplied by 1.5 (natural_cutoffs(mult=1.5)).
 """
 import numpy as np
 import yaml
 from ase.geometry import find_mic
+from ase.neighborlist import natural_cutoffs, neighbor_list
 from thermo_SiO2.io import read_sil
+
+
+OH_TYPES_BY_CATION_COUNTS = {
+    (1, 0): 'Si-OH',
+    (0, 1): 'Al-OH',
+    (1, 1): 'Al-(OH)-Si',
+    (0, 2): 'Al-(OH)-Al',
+    (2, 0): 'Si-(OH)-Si',
+}
+
+BOND_CUTOFF_MULTIPLIER = 1.5
 
 
 def find_bonded_oxygens(cfg0, H_indices, bond_cutoff=1.5):
@@ -124,6 +161,108 @@ def write_OH_vectors(out_file, oh_vectors, H_indices):
             f.write(f'{step} {vals}\n')
 
 
+def classify_OH_types(cfg0, O_indices):
+    """Classify OH groups from each O atom's first-frame Si/Al neighbors."""
+    symbols = np.array(cfg0.get_chemical_symbols())
+    neighbor_i, neighbor_j = neighbor_list(
+        'ij',
+        cfg0,
+        cutoff=natural_cutoffs(cfg0, mult=BOND_CUTOFF_MULTIPLIER),
+    )
+
+    neighbors_by_atom = [set() for _ in range(len(cfg0))]
+    for i, j in zip(neighbor_i, neighbor_j):
+        neighbors_by_atom[int(i)].add(int(j))
+
+    OH_types = []
+    for o_idx in O_indices:
+        neighbors = neighbors_by_atom[o_idx]
+        neighbor_symbols = [symbols[j] for j in neighbors]
+        hydrogen_neighbors = [
+            j for j in neighbors if symbols[j] == 'H'
+        ]
+        cation_symbols = [
+            symbol for symbol in neighbor_symbols
+            if symbol in ('Si', 'Al')
+        ]
+        cation_counts = (
+            cation_symbols.count('Si'),
+            cation_symbols.count('Al'),
+        )
+        is_water = (
+            len(neighbors) == 2
+            and len(hydrogen_neighbors) == 2
+            and all(
+                neighbors_by_atom[h_idx] == {o_idx}
+                for h_idx in hydrogen_neighbors
+            )
+        )
+        is_Al_OH2 = (
+            len(neighbors) == 3
+            and len(hydrogen_neighbors) == 2
+            and cation_counts == (0, 1)
+        )
+        if is_Al_OH2:
+            OH_types.append('Al..OH2')
+        elif is_water:
+            OH_types.append('H2O')
+        else:
+            OH_types.append(
+                OH_TYPES_BY_CATION_COUNTS.get(cation_counts, 'other')
+            )
+
+    return OH_types
+
+
+def get_OH_bond_lengths(cfg0, H_indices, O_indices, shifts):
+    """Return first-frame MIC O-H bond lengths in Angstrom."""
+    positions = cfg0.get_positions()
+    bond_vectors = [
+        positions[h_idx] - (positions[o_idx] - shift)
+        for h_idx, o_idx, shift in zip(H_indices, O_indices, shifts)
+    ]
+    return np.linalg.norm(bond_vectors, axis=1)
+
+
+def write_OH_analysis(
+    out_file, H_indices, OH_types, bond_lengths, wrapped_H_positions
+):
+    """Write first-frame OH topology, lengths, and wrapped H positions."""
+    with open(out_file, 'w') as f:
+        f.write(
+            '# H_index OH_type OH_bond_length (Ang) '
+            'Wrapped_x Wrapped_y Wrapped_z (Ang)\n'
+        )
+        for h_idx, OH_type, bond_length, H_position in zip(
+            H_indices, OH_types, bond_lengths, wrapped_H_positions
+        ):
+            x, y, z = H_position
+            f.write(
+                f'{h_idx} {OH_type} {bond_length:.5f} '
+                f'{x:.5f} {y:.5f} {z:.5f}\n'
+            )
+
+
+def select_H_indices(param, cfg0):
+    """Select explicit H indices or all H indices from the first frame."""
+    has_explicit_indices = 'OH_vector_H_indices' in param
+    select_all = param.get('OH_vector_H_all', False)
+
+    if has_explicit_indices and select_all:
+        raise ValueError(
+            'Set either OH_vector_H_indices or OH_vector_H_all: True, '
+            'not both.'
+        )
+    if select_all:
+        symbols = np.array(cfg0.get_chemical_symbols())
+        return np.flatnonzero(symbols == 'H').tolist()
+    if has_explicit_indices:
+        return param['OH_vector_H_indices']
+    raise ValueError(
+        'Set OH_vector_H_indices or OH_vector_H_all: True in the input.'
+    )
+
+
 def get_OH_vectors(in_file='in.yaml'):
     with open(in_file, 'r') as stream:
         try:
@@ -136,11 +275,25 @@ def get_OH_vectors(in_file='in.yaml'):
                      atom_symbols=param['atom_symbols'])
     print('cfgs were read.')
 
-    H_indices = param['OH_vector_H_indices']
     OH_vectors_out = param.get('OH_vectors_out', 'OH_vectors.dat')
+    OH_analysis_out = param.get('OH_analysis_out', 'OH_analysis.dat')
 
     cfg0 = cfgs[0]
+    H_indices = select_H_indices(param, cfg0)
     O_indices, shifts = find_bonded_oxygens(cfg0, H_indices)
+
+    if OH_analysis_out is not None:
+        OH_types = classify_OH_types(cfg0, O_indices)
+        bond_lengths = get_OH_bond_lengths(
+            cfg0, H_indices, O_indices, shifts
+        )
+        write_OH_analysis(
+            OH_analysis_out,
+            H_indices,
+            OH_types,
+            bond_lengths,
+            cfg0.get_positions(wrap=True)[H_indices],
+        )
 
     print(f'total {len(cfgs)} cfgs')
     oh_vectors = []

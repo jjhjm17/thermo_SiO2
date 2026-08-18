@@ -1,0 +1,6 @@
+dump_unfolded : '../test_get_dipole_born/fixtures_a_fixed_q/config.dump'
+atom_symbols : 'Si O H Al'
+
+OH_vector_H_all : True
+OH_vectors_out : null
+OH_analysis_out : null
