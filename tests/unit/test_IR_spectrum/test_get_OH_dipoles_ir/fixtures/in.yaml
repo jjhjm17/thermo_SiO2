@@ -1,6 +1,6 @@
-OH_vector_H_indices : [700, 682]  # starts from 0; synthetic test data
-OH_vectors_out : 'fixtures/OH_vectors.dat'  # input, written previously by get_OH_vectors.py
-OH_analysis_out : 'fixtures/OH_analysis.dat'
+OH_dipole_H_indices : [700, 682]  # starts from 0; synthetic test data
+OH_dipoles_out : 'fixtures/OH_dipoles.dat'  # input, written previously by get_OH_dipoles.py
+OH_analysis_out : 'fixtures/OH_analysis.csv'
 
 dt_fs : 0.5
 cut_autocorr : 500  # fs
@@ -9,3 +9,6 @@ OH_output_plot : 'test_output_IR_spectrum_OH.pdf'  # written to cwd; removed by 
 OH_output_group_plot : 'test_output_IR_spectrum_OH_group.pdf'
 OH_output_group_data : 'test_output_IR_spectrum_OH_group.dat'
 OH_output_data : 'test_output_IR_spectrum_OH.dat'  # written to cwd; removed by the test's tearDown
+
+OH_freq_vs_bond_length_plot : 'test_output_OH_freq_vs_bond_length.pdf'
+OH_freq_data : 'test_output_OH_freq.dat'

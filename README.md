@@ -27,11 +27,12 @@ Python >= ...
 ASE
 NumPy
 SciPy
+Pandas
 ...
 
 Tested versions
 
-   Python 3.11, numpy 2.0.2, ase 3.23.0
+   Python 3.11, numpy 2.0.2, pandas 2.2.3, ase 3.23.0
    OS: AlmaLinux 8
    A high-performance computing cluster is required to run VASP, LAMMPS, and MLIP
    calculations.
@@ -76,4 +77,3 @@ None
 This project is licensed under the MIT License.
 
 Third-party code under _vendor is licensed separately.
-

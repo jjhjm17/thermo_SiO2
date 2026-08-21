@@ -22,7 +22,7 @@ def compute_ir_from_dipole_components(mu_components, dt_fs, use_window=True,
     -> FFT method.
 
     This is the core computation shared by get_ir_dipole() (whole-cell
-    dipole moment) and get_OH_vectors_ir.get_OH_vectors_ir() (per-O-H-bond
+    dipole moment) and get_OH_dipoles_ir.get_OH_dipoles_ir() (per-O-H-group
     partial dipole).
 
     Parameters
@@ -53,7 +53,7 @@ def compute_ir_from_dipole_components(mu_components, dt_fs, use_window=True,
             (unscaled) intensity, which is needed to compare relative
             intensities *between* separately-computed spectra (e.g. the
             partial spectrum of one O-H bond vs. another, in
-            get_OH_vectors_ir.py) -- with normalize=True each spectrum's
+            get_OH_dipoles_ir.py) -- with normalize=True each spectrum's
             own peak is forced to 1, so such comparisons would be
             meaningless.
         verbose : bool
@@ -146,10 +146,11 @@ def get_ir_dipole():
     muy = data[:, 2]
     muz = data[:, 3]
 
+    ir_fig_verbose = getattr(param, 'ir_fig_verbose', False)
     freq_cm, ir = compute_ir_from_dipole_components(
         [mux, muy, muz], dt_fs,
         use_window=use_window, use_gradient=use_gradient,
-        cut_autocorr=cut_autocorr, verbose=param.ir_fig_verbose,
+        cut_autocorr=cut_autocorr, verbose=ir_fig_verbose,
     )
 
     # =========================
@@ -171,7 +172,7 @@ def get_ir_dipole():
     plt.ylabel("Intensity")
     plt.tight_layout()
     plt.savefig(output_plot, dpi=300)
-    if param.ir_fig_verbose:
+    if ir_fig_verbose:
         plt.show()
 
 
