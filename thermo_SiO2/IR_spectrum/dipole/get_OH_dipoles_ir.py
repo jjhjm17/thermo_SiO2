@@ -39,11 +39,13 @@ Output
         We expect a linear relationship between OH frequency and OH bond length.
 
         The format:
-            # H_index  OH_freq (cm-1)  OH_freq_stdev (cm-1)
-            682        3700.xx          100.xx
+            # H_index  OH_freq (cm-1)  OH_freq_stdev (cm-1)  Peak IR intensity (AU)
+            682        3700.xx          100.xx               10.xx
 
-        The OH stretching frequency is obtained as the average of frequencies over
-        2000 cm-1, weighted by the IR intensity. The standard deviation is also calculated.
+        The OH stretching frequency is obtained as the intensity-weighted average
+        of frequencies over 2000 cm-1 and under 5000 cm-1. The standard deviation
+        is calculated over the same window. Peak IR intensity is the maximum IR
+        intensity within that window.
 
         For the plotting, first group all data by OH_type in OH_analysis_out file, and also
         group by 'free' or 'H-bonded'. Here, 'H-bonded' means there is at least one atom in
@@ -102,6 +104,7 @@ import yaml
 from thermo_SiO2.IR_spectrum.dipole.ir import compute_ir_from_dipole_components
 
 OH_STRETCH_MIN_FREQ_CM = 2000.0
+OH_STRETCH_MAX_FREQ_CM = 5000.0
 
 
 def read_OH_dipole_H_indices(OH_dipoles_file):
@@ -289,14 +292,28 @@ def load_OH_frequency_metadata(OH_analysis_file, H_indices):
 
 
 def compute_OH_frequency_statistics(
-    freq_cm, ir_by_H, min_freq_cm=OH_STRETCH_MIN_FREQ_CM
+    freq_cm,
+    ir_by_H,
+    min_freq_cm=OH_STRETCH_MIN_FREQ_CM,
+    max_freq_cm=OH_STRETCH_MAX_FREQ_CM,
 ):
-    """Return intensity-weighted stretching mean and stdev for each H."""
+    """Return stretching mean, stdev, and peak intensity for each H."""
+    if max_freq_cm <= min_freq_cm:
+        raise ValueError(
+            'Maximum OH stretching frequency must be greater than the '
+            'minimum frequency.'
+        )
+
     freq_cm = np.asarray(freq_cm, dtype=float)
-    stretch_mask = np.isfinite(freq_cm) & (freq_cm > min_freq_cm)
+    stretch_mask = (
+        np.isfinite(freq_cm)
+        & (freq_cm > min_freq_cm)
+        & (freq_cm < max_freq_cm)
+    )
     if not np.any(stretch_mask):
         raise ValueError(
-            f'No finite frequencies above {min_freq_cm:g} cm^-1.'
+            f'No finite frequencies between {min_freq_cm:g} and '
+            f'{max_freq_cm:g} cm^-1.'
         )
 
     stretch_freq = freq_cm[stretch_mask]
@@ -312,39 +329,49 @@ def compute_OH_frequency_statistics(
         if not np.all(np.isfinite(weights)):
             raise ValueError(
                 f'IR intensity for H index {h_idx} contains non-finite '
-                f'values above {min_freq_cm:g} cm^-1.'
+                f'values between {min_freq_cm:g} and {max_freq_cm:g} '
+                f'cm^-1.'
             )
         if np.any(weights < 0):
             raise ValueError(
                 f'IR intensity for H index {h_idx} contains negative '
-                f'values above {min_freq_cm:g} cm^-1.'
+                f'values between {min_freq_cm:g} and {max_freq_cm:g} '
+                f'cm^-1.'
             )
         total_weight = np.sum(weights)
         if total_weight <= 0:
             raise ValueError(
                 f'IR intensity for H index {h_idx} has zero total '
-                f'weight above {min_freq_cm:g} cm^-1.'
+                f'weight between {min_freq_cm:g} and {max_freq_cm:g} '
+                f'cm^-1.'
             )
 
         mean = np.sum(weights * stretch_freq) / total_weight
         variance = (
             np.sum(weights * (stretch_freq - mean) ** 2) / total_weight
         )
-        frequency_stats[h_idx] = (mean, np.sqrt(max(variance, 0.0)))
+        frequency_stats[h_idx] = (
+            mean,
+            np.sqrt(max(variance, 0.0)),
+            np.max(weights),
+        )
     return frequency_stats
 
 
 def write_OH_frequency_data(out_file, frequency_stats):
     """Write weighted stretching-frequency statistics by H index."""
     rows = [
-        (h_idx, mean, stdev)
-        for h_idx, (mean, stdev) in frequency_stats.items()
+        (h_idx, mean, stdev, peak_intensity)
+        for h_idx, (mean, stdev, peak_intensity) in frequency_stats.items()
     ]
     np.savetxt(
         out_file,
         rows,
-        header='H_index OH_freq(cm-1) OH_freq_stdev(cm-1)',
-        fmt=['%d', '%.6f', '%.6f'],
+        header=(
+            'H_index OH_freq(cm-1) OH_freq_stdev(cm-1) '
+            'Peak_IR_intensity(AU)'
+        ),
+        fmt=['%d', '%.6g', '%.6g', '%.6g'],
     )
 
 
@@ -425,7 +452,7 @@ def plot_OH_ir(out_file, freq_cm, ir_by_H, OH_dipole_H_labels=False, freq_range=
     plt.xlabel("Wavenumber (cm$^{-1}$)")
     plt.ylabel("Intensity (AU)")
     plt.legend()
-    plt.tight_layout()
+    # plt.tight_layout()
     plt.savefig(out_file, dpi=300)
 
 

@@ -54,11 +54,11 @@ def read_born_charges(born_file, cfg_0=None):
     return Z
 
 def get_fixed_Z(cfg_0):
-    nominal_charges = {'Si': 1.2, 'O': -0.6, 'H': 0.3, 'Al': 0.9}
+    formal_charges = {'Si': 1.2, 'O': -0.6, 'H': 0.3, 'Al': 0.9}
 
     atoms = cfg_0
     n_atoms = len(cfg_0)
-    Z = np.array([np.eye(3) * nominal_charges[s] for s in atoms.symbols])
+    Z = np.array([np.eye(3) * formal_charges[s] for s in atoms.symbols])
     return Z
 
 
@@ -108,13 +108,13 @@ def get_dipole_born(in_file='in.yaml'):
 
     # if param.get('test_fixed_charge_Si_O_H_Al', False):
     #     # https://doi.org/10.1063/5.0194486
-    #     nominal_charges = {'Si': 1.2, 'O': -0.6, 'H': 0.3, 'Al': 0.9}
+    #     formal_charges = {'Si': 1.2, 'O': -0.6, 'H': 0.3, 'Al': 0.9}
 
     #     dipoles = []
     #     for atoms in cfgs:
     #         symbols = atoms.get_chemical_symbols()
     #         positions = atoms.get_positions()
-    #         charges = np.array([nominal_charges[s] for s in symbols])  # (N,)
+    #         charges = np.array([formal_charges[s] for s in symbols])  # (N,)
     #         dipole = (charges[:, None] * positions).sum(axis=0)        # (3,)
     #         dipoles.append(dipole)
 

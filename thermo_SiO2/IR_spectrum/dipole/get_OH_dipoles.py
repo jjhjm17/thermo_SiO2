@@ -16,7 +16,7 @@ Input
         dump_unfolded : '../a.traj/config.dump'
         atom_symbols : 'Si O H Al'
 
-        charge : 'nominal'  # or 'born_isotropic' or 'born_full'
+        charge : 'formal'  # or 'born_isotropic' or 'born_full'
         born_file : 'xxx/sample_0_BORN'  # needed for 'born_isotropic' or 'born_full'
         born_poscar : 'xxx/POSCAR'       # needed for 'born_isotropic' or 'born_full'
 
@@ -34,7 +34,7 @@ Output
     the bonded O atom to the H atom) for the corresponding H index in
     OH_dipole_H_indices, multiplied by the charge to obtain the dipole.
     So the formula is H_charge * r(H-O), where H_charge is
-    +1 for 'charge': 'nominal', and 1/3*(Z_11+Z_22+Z_33), the isotropic part
+    +1 for 'charge': 'formal', and 1/3*(Z_11+Z_22+Z_33), the isotropic part
     for 'born_isotropic', and the 3x3 tensor Z_ij for 'born_full', where Z_ij is the
     Born effective charge tensor read by get_dipole_born.py.
 
@@ -352,16 +352,16 @@ def get_charge_tensors(param, cfg0):
     """Return one 3x3 charge tensor per atom for the requested model."""
     if 'charge' not in param:
         raise ValueError(
-            "Missing required 'charge' setting. Set it to 'nominal', "
+            "Missing required 'charge' setting. Set it to 'formal', "
             "'born_isotropic', or 'born_full'."
         )
     charge = param['charge']
-    valid_charges = ('nominal', 'born_isotropic', 'born_full')
+    valid_charges = ('formal', 'born_isotropic', 'born_full')
     if charge not in valid_charges:
         raise ValueError(
             f'Invalid charge {charge!r}; expected one of {valid_charges}.'
         )
-    if charge == 'nominal':
+    if charge == 'formal':
         return np.repeat(np.eye(3)[None, :, :], len(cfg0), axis=0)
 
     missing = [key for key in ('born_file', 'born_poscar') if not param.get(key)]
@@ -550,7 +550,7 @@ def get_OH_dipoles(in_file='in.yaml'):
 
     if 'charge' not in param:
         raise ValueError(
-            "Missing required 'charge' setting. Set it to 'nominal', "
+            "Missing required 'charge' setting. Set it to 'formal', "
             "'born_isotropic', or 'born_full'."
         )
 

@@ -200,17 +200,27 @@ class TestGetOHDipolesIR(unittest.TestCase):
         self.assertEqual(loaded, {700: 'Si-OH', 682: 'Al-OH'})
 
     def test_compute_OH_frequency_statistics(self):
-        freq_cm = np.array([1000.0, 2000.0, 3000.0, 4000.0])
-        ir_by_H = {7: np.array([100.0, 100.0, 1.0, 3.0])}
+        freq_cm = np.array([
+            1000.0, 2000.0, 3000.0, 4000.0, 5000.0, 6000.0
+        ])
+        ir_by_H = {
+            7: np.array([100.0, 100.0, 1.0, 3.0, 200.0, 200.0])
+        }
 
         stats = compute_OH_frequency_statistics(freq_cm, ir_by_H)
 
-        mean, stdev = stats[7]
+        mean, stdev, peak_intensity = stats[7]
         self.assertAlmostEqual(mean, 3750.0)
         self.assertAlmostEqual(stdev, np.sqrt(187500.0))
+        self.assertAlmostEqual(peak_intensity, 3.0)
         with self.assertRaisesRegex(ValueError, 'zero total weight'):
             compute_OH_frequency_statistics(
                 freq_cm, {7: np.zeros_like(freq_cm)}
+            )
+        with self.assertRaisesRegex(ValueError, 'must be greater'):
+            compute_OH_frequency_statistics(
+                freq_cm, ir_by_H,
+                min_freq_cm=5000.0, max_freq_cm=2000.0,
             )
 
     def test_global_frequency_regression(self):
@@ -243,7 +253,7 @@ class TestGetOHDipolesIR(unittest.TestCase):
         )
         plot_OH_frequency_vs_bond_length(
             TEMP_REGRESSION_PLOT,
-            {2: (3400.0, 50.0), 1: (3700.0, 40.0)},
+            {2: (3400.0, 50.0, 2.0), 1: (3700.0, 40.0, 1.0)},
             metadata,
         )
         self.assertTrue(os.path.exists(TEMP_REGRESSION_PLOT))
