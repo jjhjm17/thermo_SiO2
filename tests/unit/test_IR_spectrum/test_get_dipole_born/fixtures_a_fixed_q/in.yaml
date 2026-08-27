@@ -1,4 +1,4 @@
-dump_unfolded : 'fixtures_a_fixed_q/config.dump'
+dump_unfolded : 'config.dump'
 atom_symbols : 'Si O H Al'
 
 test_fixed_charge_Si_O_H_Al : True

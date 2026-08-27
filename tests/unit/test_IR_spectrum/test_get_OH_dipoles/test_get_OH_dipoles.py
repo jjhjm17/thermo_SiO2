@@ -18,11 +18,14 @@ import json
 import os
 import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import yaml
 from ase import Atoms
 from ase.io import write
+from ase.neighborlist import neighbor_list as ase_neighbor_list
 from thermo_SiO2.io import read_sil
 from thermo_SiO2.IR_spectrum.dipole.get_OH_dipoles import (
     build_dipole_groups,
@@ -30,12 +33,18 @@ from thermo_SiO2.IR_spectrum.dipole.get_OH_dipoles import (
     compute_frame_dipoles,
     find_hydrogen_bonds,
     get_OH_dipoles,
+    get_neighbors_by_atom,
     get_charge_tensors,
     find_bonded_oxygens,
     select_H_indices,
     write_OH_analysis,
 )
 
+TEST_DIR = Path(__file__).resolve().parent
+FIXTURE_A = TEST_DIR / 'fixtures/'
+FIXTURE_B = TEST_DIR / 'fixtures_b_OH_analysis/'
+FIXTURE_C = TEST_DIR / 'fixtures_c_born_isotropic//'
+FIXTURE_D = TEST_DIR / 'fixtures_d_born_full//'
 
 class TestGetOHDipoles(unittest.TestCase):
 
@@ -258,6 +267,56 @@ class TestGetOHDipoles(unittest.TestCase):
                 )
                 np.testing.assert_allclose(actual, expected)
 
+    def test_build_dipole_groups_builds_neighbor_graph_once(self):
+        atoms = Atoms(
+            symbols=['O', 'H', 'H'],
+            positions=[
+                [5.0, 5.0, 5.0],
+                [5.8, 5.5, 5.0],
+                [4.6, 4.2, 5.0],
+            ],
+            cell=[20.0, 20.0, 20.0],
+            pbc=True,
+        )
+        target = (
+            'thermo_SiO2.IR_spectrum.dipole.get_OH_dipoles.neighbor_list'
+        )
+        with patch(target, wraps=ase_neighbor_list) as mocked_neighbor_list:
+            build_dipole_groups(atoms, [1, 2])
+
+        self.assertEqual(mocked_neighbor_list.call_count, 1)
+
+    def test_close_H2Os_keep_each_H_bonded_to_nearest_O(self):
+        atoms = Atoms(
+            symbols=['O', 'H', 'H', 'O', 'H', 'H'],
+            positions=[
+                [5.0, 5.0, 5.0],
+                [4.2, 5.0, 5.0],
+                [6.0, 5.0, 5.0],
+                [7.24, 5.0, 5.0],
+                [8.04, 5.0, 5.0],
+                [7.24, 5.8, 5.0],
+            ],
+            cell=[20.0, 20.0, 20.0],
+            pbc=True,
+        )
+
+        with self.assertWarnsRegex(
+            RuntimeWarning,
+            r'H atom index 2: O indices \[0, 3\], distances '
+            r'\[1\.0.*, 1\.24.*\].*nearest O atom index 0',
+        ):
+            groups, pair_by_H = build_dipole_groups(atoms, [1, 2, 4, 5])
+
+        self.assertEqual([group['H_index'] for group in groups], [1, 4])
+        self.assertEqual(
+            [group['H_indices'] for group in groups], [[1, 2], [4, 5]]
+        )
+        self.assertEqual(
+            [group['OH_type'] for group in groups], ['H2O', 'H2O']
+        )
+        self.assertEqual(pair_by_H[2][0], 0)
+
     def test_charge_tensors(self):
         atoms = Atoms(
             symbols=['O', 'H', 'H'],
@@ -283,7 +342,7 @@ class TestGetOHDipoles(unittest.TestCase):
                     '3 0 0 0 3 0 0 0 3\n'
                 )
 
-            nominal = get_charge_tensors({'charge': 'nominal'}, atoms)
+            formal = get_charge_tensors({'charge': 'formal'}, atoms)
             isotropic = get_charge_tensors(
                 {
                     'charge': 'born_isotropic',
@@ -301,7 +360,7 @@ class TestGetOHDipoles(unittest.TestCase):
                 atoms,
             )
 
-        np.testing.assert_allclose(nominal[1], np.eye(3))
+        np.testing.assert_allclose(formal[1], np.eye(3))
         np.testing.assert_allclose(isotropic[1], 4.0 * np.eye(3))
         np.testing.assert_allclose(full[1], H_tensor)
         with self.assertRaisesRegex(ValueError, "Missing required 'charge'"):
@@ -327,20 +386,21 @@ class TestGetOHDipoles(unittest.TestCase):
 
     def test_get_OH_dipoles(self):
         print('\ntest_get_OH_dipoles')
-        self.assert_OH_dipoles_match_fixture('fixtures')
+        self.assert_OH_dipoles_match_fixture(FIXTURE_A)
 
     def test_get_OH_dipoles_born_isotropic(self):
-        self.assert_OH_dipoles_match_fixture(
-            'fixtures_c_born_isotropic'
-        )
+        self.assert_OH_dipoles_match_fixture(FIXTURE_C)
 
     def test_get_OH_dipoles_born_full(self):
-        self.assert_OH_dipoles_match_fixture('fixtures_d_born_full')
+        self.assert_OH_dipoles_match_fixture(FIXTURE_D)
 
     def test_write_BORN_isotropic(self):
-        fixture_dir = 'fixtures_c_born_isotropic'
+        fixture_dir = FIXTURE_C
         with open(os.path.join(fixture_dir, 'in.yaml')) as f:
             param = yaml.safe_load(f)
+        for key in ('dump_unfolded', 'born_file', 'born_poscar'):
+            if param.get(key):
+                param[key] = str((fixture_dir / param[key]).resolve())
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             born_isotropic_file = os.path.join(
@@ -368,10 +428,12 @@ class TestGetOHDipoles(unittest.TestCase):
     def test_find_bonded_oxygens(self):
         # H index 1 (H1) should bond to O index 0 (O1);
         # H index 3 (H2) should bond to O index 2 (O2).
-        # Both bonds are exactly 1.0 Ang, well under the 1.5 Ang cutoff,
+        # Both bonds are exactly 1.0 Ang, under the natural O-H cutoff,
         # and each H has only one O within range.
         print('\ntest_find_bonded_oxygens')
-        cfgs = read_sil('fixtures/config.dump', atom_symbols='Si O H Al')
+        cfgs = read_sil(
+            os.path.join(FIXTURE_A, 'config.dump'), atom_symbols='Si O H Al'
+        )
         cfg0 = cfgs[0]
 
         H_indices = [1, 3]
@@ -396,7 +458,7 @@ class TestGetOHDipoles(unittest.TestCase):
             symbols=['O', 'O', 'H'],
             positions=[
                 [0.0, 0.0, 0.0],
-                [2.48, 0.0, 0.0],
+                [2.44, 0.0, 0.0],
                 [1.0, 0.0, 0.0],
             ],
             cell=[20.0, 20.0, 20.0],
@@ -412,9 +474,37 @@ class TestGetOHDipoles(unittest.TestCase):
         self.assertEqual(O_indices, [0])
         np.testing.assert_allclose(shifts, [[0.0, 0.0, 0.0]])
 
+    def test_find_bonded_oxygens_uses_shared_natural_cutoff(self):
+        atoms = Atoms(
+            symbols=['O', 'O', 'H'],
+            positions=[
+                [0.0, 0.0, 0.0],
+                [2.48, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+            ],
+            cell=[20.0, 20.0, 20.0],
+            pbc=True,
+        )
+        neighbors_by_atom = get_neighbors_by_atom(atoms)
+
+        self.assertEqual(neighbors_by_atom[2], {0})
+        target = (
+            'thermo_SiO2.IR_spectrum.dipole.get_OH_dipoles.neighbor_list'
+        )
+        with patch(target) as mocked_neighbor_list:
+            O_indices, _ = find_bonded_oxygens(
+                atoms, [2], neighbors_by_atom
+            )
+
+        mocked_neighbor_list.assert_not_called()
+        self.assertEqual(O_indices, [0])
+
     def test_write_OH_analysis(self):
-        with open('fixtures/in.yaml') as f:
+        with open(os.path.join(FIXTURE_A, 'in.yaml')) as f:
             param = yaml.safe_load(f)
+        for key in ('dump_unfolded', 'born_file', 'born_poscar'):
+            if param.get(key):
+                param[key] = str((FIXTURE_A / param[key]).resolve())
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             analysis_file = os.path.join(tmp_dir, 'OH_analysis.csv')
@@ -447,9 +537,12 @@ class TestGetOHDipoles(unittest.TestCase):
         )
 
     def test_OH_analysis_against_hand_fixture(self):
-        fixture_dir = 'fixtures_b_OH_analysis'
+        fixture_dir = FIXTURE_B
         with open(os.path.join(fixture_dir, 'in.yaml')) as f:
             param = yaml.safe_load(f)
+        for key in ('dump_unfolded', 'born_file', 'born_poscar'):
+            if param.get(key):
+                param[key] = str((fixture_dir / param[key]).resolve())
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             analysis_file = os.path.join(tmp_dir, 'OH_analysis.csv')

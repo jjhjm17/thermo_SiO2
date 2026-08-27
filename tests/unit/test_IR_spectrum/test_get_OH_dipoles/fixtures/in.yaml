@@ -1,6 +1,6 @@
-dump_unfolded : 'fixtures/config.dump'
+dump_unfolded : 'config.dump'
 atom_symbols : 'Si O H Al'
-charge : 'nominal'
+charge : 'formal'
 
 OH_dipole_H_indices : [1, 3]  # starts from 0; 1: H1 (bonded to O1), 3: H2 (bonded to O2)
 OH_dipoles_out : null  # don't write a file during the test

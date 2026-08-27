@@ -1,0 +1,9 @@
+cp /home/atuin/a102cb/a102cb12/SiO2_mesoporous/e.IR_spectrum/t.dipole_correlate/b.pore/b.10_samples/a.MD/calc_b_debug_0.5fs/sample_3/config.dump .
+cp /home/atuin/a102cb/a102cb12/SiO2_mesoporous/e.IR_spectrum/t.dipole_correlate/b.pore/b.10_samples/a.MD/calc_b_debug_0.5fs/sample_3/OH_analysis.csv OH_analysis_hand.csv 
+
+
+Context
+
+two close H2O atoms. We need to adjust the cutoff for H.
+H 694 should not be bonded to two O atoms
+

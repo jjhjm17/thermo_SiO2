@@ -25,7 +25,6 @@ OH_normalize: True instead forces both peaks to 1, matching ir.py's own
 """
 import os
 import unittest
-from pathlib import Path
 import numpy as np
 import yaml
 from thermo_SiO2.IR_spectrum.dipole.get_OH_dipoles_ir import (
@@ -44,14 +43,7 @@ from thermo_SiO2.IR_spectrum.dipole.ir import (
     compute_ir_from_dipole_components,
 )
 
-TEST_DIR = Path(__file__).resolve().parent
-FIXTURE_DIR = TEST_DIR / 'fixtures'
-
 EXPECTED_WAVENUMBER = {700: 3600.0, 682: 3800.0}
-# Output/temp files below are written and read relative to the current
-# working directory (not FIXTURE_DIR) by design: get_OH_dipoles_ir
-# writes them according to the (relative) paths configured in in.yaml,
-# and tearDown() cleans them up using these same relative names.
 OUTPUT_DATA = 'test_output_IR_spectrum_OH.dat'
 OUTPUT_PLOT = 'test_output_IR_spectrum_OH.pdf'
 OUTPUT_GROUP_PLOT = 'test_output_IR_spectrum_OH_group.pdf'
@@ -60,13 +52,10 @@ OUTPUT_FREQ_PLOT = 'test_output_OH_freq_vs_bond_length.pdf'
 OUTPUT_FREQ_DATA = 'test_output_OH_freq.dat'
 TEMP_ANALYSIS = 'test_OH_analysis.csv'
 TEMP_REGRESSION_PLOT = 'test_OH_regression.pdf'
-# Fixture inputs (and generated in.yaml variants derived from them) are
-# anchored to the test file's own directory, so tests work regardless
-# of the directory pytest is invoked from.
-GROUP_DATA_HAND = str(FIXTURE_DIR / 'IR_spectrum_OH_group_hand.dat')
-FREQ_DATA_HAND = str(FIXTURE_DIR / 'OH_freq_hand.dat')
-NORMALIZED_IN_FILE = str(FIXTURE_DIR / 'in_normalize.yaml')
-ALL_H_IN_FILE = str(FIXTURE_DIR / 'in_all_H.yaml')
+GROUP_DATA_HAND = 'fixtures/IR_spectrum_OH_group_hand.dat'
+FREQ_DATA_HAND = 'fixtures/OH_freq_hand.dat'
+NORMALIZED_IN_FILE = 'fixtures/in_normalize.yaml'
+ALL_H_IN_FILE = 'fixtures/in_all_H.yaml'
 
 
 class TestGetOHDipolesIR(unittest.TestCase):
@@ -74,7 +63,7 @@ class TestGetOHDipolesIR(unittest.TestCase):
     def setUp(self):
         # a second in.yaml, identical to fixtures/in.yaml but with
         # OH_normalize: True, to test the opt-in normalized behavior
-        with open(FIXTURE_DIR / 'in.yaml') as f:
+        with open('fixtures/in.yaml') as f:
             param = yaml.safe_load(f)
         param['OH_normalize'] = True
         with open(NORMALIZED_IN_FILE, 'w') as f:
@@ -100,7 +89,7 @@ class TestGetOHDipolesIR(unittest.TestCase):
 
     def test_get_OH_dipoles_ir_not_normalized_by_default(self):
         print('\ntest_get_OH_dipoles_ir_not_normalized_by_default')
-        freq_cm, ir_by_H = get_OH_dipoles_ir(str(FIXTURE_DIR / 'in.yaml'))
+        freq_cm, ir_by_H = get_OH_dipoles_ir('fixtures/in.yaml')
 
         self.assertEqual(set(ir_by_H.keys()), set(EXPECTED_WAVENUMBER.keys()))
 
@@ -169,7 +158,7 @@ class TestGetOHDipolesIR(unittest.TestCase):
         self.assertEqual(list(ir_by_H), [700, 682])
 
     def test_select_H_indices(self):
-        dipoles_file = str(FIXTURE_DIR / 'OH_dipoles.dat')
+        dipoles_file = 'fixtures/OH_dipoles.dat'
         self.assertEqual(
             read_OH_dipole_H_indices(dipoles_file), [700, 682]
         )
@@ -206,7 +195,7 @@ class TestGetOHDipolesIR(unittest.TestCase):
         np.testing.assert_allclose(grouped['Al-OH'], [4.0, 5.0, 6.0])
 
         loaded = load_OH_types(
-            str(FIXTURE_DIR / 'OH_analysis.csv'), [700, 682]
+            'fixtures/OH_analysis.csv', [700, 682]
         )
         self.assertEqual(loaded, {700: 'Si-OH', 682: 'Al-OH'})
 
@@ -316,15 +305,14 @@ class TestGetOHDipolesIR(unittest.TestCase):
 
     def test_load_OH_dipoles(self):
         print('\ntest_load_OH_dipoles')
-        dipoles_file = str(FIXTURE_DIR / 'OH_dipoles.dat')
-        oh_dipoles = load_OH_dipoles(dipoles_file, [700, 682])
+        oh_dipoles = load_OH_dipoles('fixtures/OH_dipoles.dat', [700, 682])
         self.assertEqual(set(oh_dipoles.keys()), {700, 682})
         for h_idx in (700, 682):
             self.assertEqual(oh_dipoles[h_idx].shape[1], 3)
 
         with self.assertRaises(ValueError):
             # wrong number of H indices for the data file
-            load_OH_dipoles(dipoles_file, [700, 682, 1])
+            load_OH_dipoles('fixtures/OH_dipoles.dat', [700, 682, 1])
 
 
 if __name__ == '__main__':

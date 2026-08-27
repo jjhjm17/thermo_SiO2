@@ -10,6 +10,7 @@ import numpy as np
 import yaml
 from ase.io import read
 from ase.geometry import find_mic
+from thermo_SiO2.IR_spectrum.dipole.config_paths import resolve_config_path
 from thermo_SiO2.io import read_sil
 
 
@@ -76,6 +77,10 @@ def get_dipole_born(in_file='in.yaml'):
         except yaml.YAMLError as exc:
             print(exc)
 
+
+    for key in ('dump_unfolded', 'born_file', 'born_poscar'):
+        if key in param:
+            param[key] = resolve_config_path(in_file, param[key])
     cfgs = read_sil(param['dump_unfolded'],
                     atom_symbols=param['atom_symbols'])
     print('cfgs were read.')
@@ -104,7 +109,7 @@ def get_dipole_born(in_file='in.yaml'):
             raise ValueError(f'The max displacement between the positions of born_poscar and dump file is very large, {dr_max:.2f} Ang. Please check if the structures are the same, and the atomic order is not changed.') 
 
 
-    dipole_out = param.get('dipole_out')
+    dipole_out = resolve_config_path(in_file, param.get('dipole_out'))
 
     # if param.get('test_fixed_charge_Si_O_H_Al', False):
     #     # https://doi.org/10.1063/5.0194486

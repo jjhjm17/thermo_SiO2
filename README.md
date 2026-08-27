@@ -52,6 +52,9 @@ Tested versions
     visi a.dump
     visi a.dataf
   For more information, see visi -h
+- test: first go to each subfolder of ./test to test_*.py file. In this folder, run pytest
+        or unittest (python test_*.py). This is needed for now because the location of text
+        files depend on the location of input file in.yaml.
 
 ## Repository structure
 

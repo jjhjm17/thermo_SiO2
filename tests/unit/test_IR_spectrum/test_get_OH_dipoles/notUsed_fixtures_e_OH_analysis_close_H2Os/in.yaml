@@ -1,6 +1,6 @@
-dump_unfolded : '../../test_get_dipole_born/fixtures_a_fixed_q/config.dump'
+dump_unfolded : '../fixtures_e_OH_analysis_close_H2Os/config.dump'
 atom_symbols : 'Si O H Al'
-charge : 'formal'
+charge : 'nominal'
 
 OH_dipole_H_all : True
 OH_dipoles_out : null

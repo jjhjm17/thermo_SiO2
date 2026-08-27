@@ -78,9 +78,10 @@ Procedure
     2. Select H atoms from OH_dipole_H_indices, or select every H atom in
        the first frame when OH_dipole_H_all is True. For each selected H,
        find the bonded O atom: the nearest O atom under the minimum image
-       convention (MIC), with bond length < 1.5 Ang (typical O-H bond
-       length is ~1.0 Ang). Print the found O index and the bond length.
-       If no O atom is found within 1.5 Ang, raise an error and stop. If
+       convention (MIC), with bond length (for the cutoff, see the description
+       below for OH_analysis.csv, neighbor_list). Print the found O index and
+       the bond length.
+       If no O atom is found within the cutoff, raise an error and stop. If
        multiple O atoms are found, warn and select the nearest one.
     3. Since the dump file coordinates are unfolded (no periodic wrapping
        between frames) and computing the MIC every frame would be
@@ -97,6 +98,9 @@ Procedure
     only to that O. Other types use the Si and Al neighbors of the bonded
     O atom. Bonds are found with ASE's neighbor_list() using covalent
     radii multiplied by 1.5 (natural_cutoffs(mult=1.5)).
+    When an H atom is within the cutoff of multiple O atoms, bond it only to
+    the nearest O. Emit a warning listing the candidate O indices and bond
+    lengths and identifying the selected O.
 """
 import warnings
 
@@ -108,6 +112,7 @@ from ase.io import read
 from ase.neighborlist import natural_cutoffs, neighbor_list
 from thermo_SiO2.IR_spectrum.dipole.get_dipole_born import read_born_charges
 from thermo_SiO2.io import read_sil
+from thermo_SiO2.IR_spectrum.dipole.config_paths import resolve_config_path
 
 
 OH_TYPES_BY_CATION_COUNTS = {
@@ -123,9 +128,11 @@ HYDROGEN_BOND_MAX_OO_DISTANCE = 3.5
 HYDROGEN_BOND_MIN_ANGLE_DEG = 140.0
 
 
-def find_bonded_oxygens(cfg0, H_indices, bond_cutoff=1.5):
-    """For each H index, find the nearest O atom (via MIC) within
-    bond_cutoff Ang. Returns:
+def find_bonded_oxygens(cfg0, H_indices, neighbors_by_atom=None):
+    """Find the nearest covalent-neighbor O atom for each H index.
+
+    ``neighbors_by_atom`` may be supplied to reuse the first-frame neighbor
+    graph. Otherwise it is built with :func:`get_neighbors_by_atom`. Returns:
         O_indices   : list of matched O atom index for each H
         shifts      : (n_pairs, 3) array; Cartesian shift to subtract from
                       the raw O position each frame so that
@@ -139,6 +146,8 @@ def find_bonded_oxygens(cfg0, H_indices, bond_cutoff=1.5):
     positions0 = cfg0.get_positions()
     cell = cfg0.cell
     pbc = cfg0.pbc
+    if neighbors_by_atom is None:
+        neighbors_by_atom = get_neighbors_by_atom(cfg0)
 
     O_indices = []
     shifts = []
@@ -150,35 +159,37 @@ def find_bonded_oxygens(cfg0, H_indices, bond_cutoff=1.5):
             )
         H_pos = positions0[h_idx]
 
-        # vectors from H to every O atom, then take the minimum image
-        D = positions0[O_indices_all] - H_pos
-        mic_vectors, mic_dist = find_mic(D, cell=cell, pbc=pbc)
-
-        matches = np.where(mic_dist < bond_cutoff)[0]
-        if matches.size == 0:
+        candidate_O_indices = np.array(sorted(
+            idx for idx in neighbors_by_atom[h_idx]
+            if symbols[idx] == 'O'
+        ), dtype=int)
+        if candidate_O_indices.size == 0:
             raise ValueError(
-                f'No O atom found within {bond_cutoff} Ang of H atom '
+                'No O atom found within the natural cutoff of H atom '
                 f'index {h_idx}.'
             )
-        elif matches.size > 1:
-            matched_O = O_indices_all[matches]
-            matched_dist = mic_dist[matches]
-            nearest = int(np.argmin(matched_dist))
-            match = matches[nearest]
+
+        # Vectors from H to candidate O atoms, then take the minimum image.
+        D = positions0[candidate_O_indices] - H_pos
+        mic_vectors, mic_dist = find_mic(D, cell=cell, pbc=pbc)
+
+        if candidate_O_indices.size > 1:
+            nearest = int(np.argmin(mic_dist))
             warnings.warn(
-                f'Multiple O atoms found within {bond_cutoff} Ang of H '
-                f'atom index {h_idx}: O indices {matched_O.tolist()}, '
-                f'distances {matched_dist.tolist()}. Selecting nearest '
-                f'O atom index {int(matched_O[nearest])} with distance '
-                f'{matched_dist[nearest]}.',
+                'Multiple O atoms found within the natural cutoff of H '
+                f'atom index {h_idx}: O indices '
+                f'{candidate_O_indices.tolist()}, distances '
+                f'{mic_dist.tolist()}. Selecting nearest O atom index '
+                f'{int(candidate_O_indices[nearest])} with distance '
+                f'{mic_dist[nearest]}.',
                 RuntimeWarning,
                 stacklevel=2,
             )
         else:
-            match = matches[0]
-        o_idx = int(O_indices_all[match])
-        bond_len = mic_dist[match]
-        mic_vec = mic_vectors[match]  # MIC vector from H to O (O - H)
+            nearest = 0
+        o_idx = int(candidate_O_indices[nearest])
+        bond_len = mic_dist[nearest]
+        mic_vec = mic_vectors[nearest]  # MIC vector from H to O (O - H)
 
         print(f'H index {h_idx}: bonded O index {o_idx}, '
               f'bond length {bond_len:.4f} Ang')
@@ -214,18 +225,11 @@ def write_BORN_isotropic(out_file, H_indices, charge_tensors):
             f.write(f'{h_idx} {charge_tensors[h_idx, 0, 0]:.5f}\n')
 
 
-def classify_OH_types(cfg0, O_indices):
+def classify_OH_types(cfg0, O_indices, neighbors_by_atom=None):
     """Classify OH groups from each O atom's first-frame Si/Al neighbors."""
     symbols = np.array(cfg0.get_chemical_symbols())
-    neighbor_i, neighbor_j = neighbor_list(
-        'ij',
-        cfg0,
-        cutoff=natural_cutoffs(cfg0, mult=BOND_CUTOFF_MULTIPLIER),
-    )
-
-    neighbors_by_atom = [set() for _ in range(len(cfg0))]
-    for i, j in zip(neighbor_i, neighbor_j):
-        neighbors_by_atom[int(i)].add(int(j))
+    if neighbors_by_atom is None:
+        neighbors_by_atom = get_neighbors_by_atom(cfg0)
 
     OH_types = []
     for o_idx in O_indices:
@@ -268,7 +272,11 @@ def classify_OH_types(cfg0, O_indices):
 
 
 def get_neighbors_by_atom(cfg0):
-    """Return the first-frame covalent-neighbor graph."""
+    """Return the resolved first-frame covalent-neighbor graph.
+
+    If an H has multiple O candidates, retain only its nearest O bond and
+    remove the other H-O edges symmetrically from the graph.
+    """
     neighbor_i, neighbor_j = neighbor_list(
         'ij',
         cfg0,
@@ -277,6 +285,38 @@ def get_neighbors_by_atom(cfg0):
     neighbors_by_atom = [set() for _ in range(len(cfg0))]
     for i, j in zip(neighbor_i, neighbor_j):
         neighbors_by_atom[int(i)].add(int(j))
+
+    symbols = np.array(cfg0.get_chemical_symbols())
+    positions = cfg0.get_positions()
+    for h_idx in np.flatnonzero(symbols == 'H'):
+        candidate_O_indices = np.array(sorted(
+            idx for idx in neighbors_by_atom[h_idx]
+            if symbols[idx] == 'O'
+        ), dtype=int)
+        if candidate_O_indices.size <= 1:
+            continue
+
+        _, distances = find_mic(
+            positions[candidate_O_indices] - positions[h_idx],
+            cell=cfg0.cell,
+            pbc=cfg0.pbc,
+        )
+        nearest = int(np.argmin(distances))
+        selected_O_idx = int(candidate_O_indices[nearest])
+        warnings.warn(
+            'Multiple O atoms found within the natural cutoff of H '
+            f'atom index {h_idx}: O indices '
+            f'{candidate_O_indices.tolist()}, distances '
+            f'{distances.tolist()}. Selecting nearest O atom index '
+            f'{selected_O_idx} with distance {distances[nearest]}.',
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        for o_idx in candidate_O_indices:
+            if o_idx != selected_O_idx:
+                neighbors_by_atom[h_idx].remove(int(o_idx))
+                neighbors_by_atom[int(o_idx)].discard(int(h_idx))
+
     return neighbors_by_atom
 
 
@@ -286,8 +326,9 @@ def build_dipole_groups(cfg0, selected_H_indices):
     Selecting either H of a two-H group selects the whole group. The smaller
     numerical H index is its stable output identifier.
     """
+    neighbors_by_atom = get_neighbors_by_atom(cfg0)
     selected_O_indices, selected_shifts = find_bonded_oxygens(
-        cfg0, selected_H_indices
+        cfg0, selected_H_indices, neighbors_by_atom
     )
     pair_by_H = {
         h_idx: (o_idx, shift)
@@ -295,13 +336,16 @@ def build_dipole_groups(cfg0, selected_H_indices):
             selected_H_indices, selected_O_indices, selected_shifts
         )
     }
-    neighbors_by_atom = get_neighbors_by_atom(cfg0)
     symbols = np.array(cfg0.get_chemical_symbols())
+    selected_OH_types = classify_OH_types(
+        cfg0, selected_O_indices, neighbors_by_atom
+    )
 
     groups = []
     seen_group_keys = set()
-    for selected_h_idx, o_idx in zip(selected_H_indices, selected_O_indices):
-        OH_type = classify_OH_types(cfg0, [o_idx])[0]
+    for selected_h_idx, o_idx, OH_type in zip(
+        selected_H_indices, selected_O_indices, selected_OH_types
+    ):
         if OH_type in ('H2O', 'Al..OH2'):
             H_indices = sorted(
                 idx for idx in neighbors_by_atom[o_idx]
@@ -326,7 +370,7 @@ def build_dipole_groups(cfg0, selected_H_indices):
         ]
         if missing_H_indices:
             added_O_indices, added_shifts = find_bonded_oxygens(
-                cfg0, missing_H_indices
+                cfg0, missing_H_indices, neighbors_by_atom
             )
             for h_idx, added_o_idx, shift in zip(
                 missing_H_indices, added_O_indices, added_shifts
@@ -554,15 +598,24 @@ def get_OH_dipoles(in_file='in.yaml'):
             "'born_isotropic', or 'born_full'."
         )
 
+    for key in ('dump_unfolded', 'born_file', 'born_poscar'):
+        if key in param:
+            param[key] = resolve_config_path(in_file, param[key])
+
     cfgs = read_sil(
         param['dump_unfolded'], atom_symbols=param['atom_symbols']
     )
     print('cfgs were read.')
 
-    OH_dipoles_out = param.get('OH_dipoles_out', 'OH_dipoles.dat')
-    OH_analysis_out = param.get('OH_analysis_out', 'OH_analysis.csv')
-    BORN_isotropic_out = param.get(
-        'BORN_isotropic_out', 'BORN_isotropic.txt'
+    OH_dipoles_out = resolve_config_path(
+        in_file, param.get('OH_dipoles_out', 'OH_dipoles.dat')
+    )
+    OH_analysis_out = resolve_config_path(
+        in_file, param.get('OH_analysis_out', 'OH_analysis.csv')
+    )
+    BORN_isotropic_out = resolve_config_path(
+        in_file,
+        param.get('BORN_isotropic_out', 'BORN_isotropic.txt'),
     )
 
     cfg0 = cfgs[0]
