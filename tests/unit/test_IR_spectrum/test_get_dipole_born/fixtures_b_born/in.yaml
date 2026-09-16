@@ -1,10 +1,8 @@
 dump_unfolded : 'config.dump'
 atom_symbols : 'Si O H Al'
 
-# test_fixed_charge_Si_O_H_Al : True
+charge : 'born_isotropic'
 born_file : 'BORN'
 born_poscar : 'POSCAR'
 
-dipole_out : null # null
-
-
+born_dipole_out : null

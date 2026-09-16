@@ -2,14 +2,18 @@
 
 Input
 in.yaml
+        # see explanation of get_OH_dipoles.py for more details
+        dump_unfolded : '../a.traj/config.dump'
+        atom_symbols : 'Si O H Al'
+        charge : 'formal'  # or 'born_isotropic' or 'born_full'
+        born_file : 'xxx/sample_0_BORN'  # needed for 'born_isotropic' or 'born_full'
+        born_poscar : 'xxx/POSCAR'       # needed for 'born_isotropic' or 'born_full'
 
 output
-dipole_out
+        born_dipole_out : 'born_dipole.out'
 """
 import numpy as np
 import yaml
-from ase.io import read
-from ase.geometry import find_mic
 from thermo_SiO2.IR_spectrum.dipole.config_paths import resolve_config_path
 from thermo_SiO2.io import read_sil
 
@@ -63,8 +67,18 @@ def get_fixed_Z(cfg_0):
     return Z
 
 
-def write_dipoles(dipole_out, dipoles):
-    with open(dipole_out, 'w') as f:
+def get_charge_tensors(param, cfg0):
+    """Return charge tensors using the same charge modes as OH analysis."""
+    if param.get('charge') == 'formal':
+        return get_fixed_Z(cfg0)
+    from thermo_SiO2.IR_spectrum.dipole.get_OH_dipoles import (
+        get_charge_tensors as get_oh_charge_tensors,
+    )
+    return get_oh_charge_tensors(param, cfg0)
+
+
+def write_dipoles(born_dipole_out, dipoles):
+    with open(born_dipole_out, 'w') as f:
         f.write('# TimeStep dipole moment  x, y, z (|e|)\n')
         for i, dipole in enumerate(dipoles):
             f.write('{} {:.5f} {:.5f} {:.5f}\n'.format(i, *dipole))
@@ -85,53 +99,11 @@ def get_dipole_born(in_file='in.yaml'):
                     atom_symbols=param['atom_symbols'])
     print('cfgs were read.')
 
-    
-    if not param.get('test_fixed_charge_Si_O_H_Al', False):
-        # Check of born_poscar and dump file have the same atomic 
-        # structures, and the ordering of atomic symbols are the same.
-        cfg_born = read(param['born_poscar'])
-        cfg0 = cfgs[0]
-        if not (cfg0.symbols == cfg_born.symbols).all():
-            # .all(): if all values are true
-            raise ValueError('The atomic symbols of born_poscar and the dump file are differernt.')
-        elif not (cfg0.cell == cfg_born.cell).all():
-             # .all(): if all values are true
-             raise ValueError('The cells of born_poscar and the dump file are differernt.')
+    born_dipole_out = resolve_config_path(
+        in_file, param.get('born_dipole_out')
+    )
 
-        dr = cfg0.positions - cfg_born.positions 
-        _, dr_dist = find_mic(dr, cell=cfg0.cell, pbc=cfg0.pbc)
-        dr_max = np.max(dr_dist)
-        print(f'The max displacement between the positions of born_poscar and dump file: {dr_max:.2f} Ang.')
-
-        if 5 > dr_max > 3:
-            print(f'\nWarning: The max displacement between the positions of born_poscar and dump file is large, {dr_max:.2f} Ang. please check if the structures are the same, and the atomic order is not changed.\n') 
-        elif dr_max >= 5:
-            raise ValueError(f'The max displacement between the positions of born_poscar and dump file is very large, {dr_max:.2f} Ang. Please check if the structures are the same, and the atomic order is not changed.') 
-
-
-    dipole_out = resolve_config_path(in_file, param.get('dipole_out'))
-
-    # if param.get('test_fixed_charge_Si_O_H_Al', False):
-    #     # https://doi.org/10.1063/5.0194486
-    #     formal_charges = {'Si': 1.2, 'O': -0.6, 'H': 0.3, 'Al': 0.9}
-
-    #     dipoles = []
-    #     for atoms in cfgs:
-    #         symbols = atoms.get_chemical_symbols()
-    #         positions = atoms.get_positions()
-    #         charges = np.array([formal_charges[s] for s in symbols])  # (N,)
-    #         dipole = (charges[:, None] * positions).sum(axis=0)        # (3,)
-    #         dipoles.append(dipole)
-
-    #     if dipole_out is not None:
-    #         write_dipoles(dipole_out, dipoles)
-    #     return dipoles
-
-    
-    if param.get('test_fixed_charge_Si_O_H_Al', False):
-        Z = get_fixed_Z(cfg_0 = cfgs[0])
-    else:
-        Z = read_born_charges(param['born_file'], cfg_0 = cfgs[0])  # shape (N_atoms, 3, 3)
+    Z = get_charge_tensors(param, cfgs[0])  # shape (N_atoms, 3, 3)
 
     print(f'total {len(cfgs)} cfgs')
     dipoles = []
@@ -153,8 +125,8 @@ def get_dipole_born(in_file='in.yaml'):
         dipole = np.einsum('nij,nj->i', Z, positions)
         dipoles.append(dipole)
 
-    if dipole_out is not None:
-        write_dipoles(dipole_out, dipoles)
+    if born_dipole_out is not None:
+        write_dipoles(born_dipole_out, dipoles)
     return dipoles
 
 

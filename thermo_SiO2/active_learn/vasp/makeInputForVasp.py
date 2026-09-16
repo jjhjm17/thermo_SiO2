@@ -110,12 +110,18 @@ def get_atoms_and_forces(param):
     elif hasattr(param, 'xyz_s'):
         configs = []
         for xyz_file in param.xyz_s:
-            configs.append(read(xyz_file))
+            if hasattr(param, 'xyz_index'):
+                index = param.xyz_index
+                configs.append(read(xyz_file, index=index))
+            else:
+                configs.append(read(xyz_file))
         # configs = [sort_config_by_POTCAR_order(config,
         #                                        symbols=atom_symbols_in_output_cfg) for
         #            config in configs]
         # atoms_and_forces = [{'atoms': config, 'forces':
         #                      np.zeros((len(config),3))} for config in configs]
+    elif hasattr(param, 'xyz'):
+        configs = read(param.xyz, index=':')
     elif hasattr(param, 'dump_s'):  # lammps dump file
         configs = []
         if hasattr(param, 'atom_symbols_input_lmp'):

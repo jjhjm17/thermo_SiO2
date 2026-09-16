@@ -1,7 +1,5 @@
 dump_unfolded : 'config.dump'
 atom_symbols : 'Si O H Al'
 
-test_fixed_charge_Si_O_H_Al : True
-dipole_out : null  # YAML null, python None
-
-
+charge : 'formal'
+born_dipole_out : 'born_dipole.out'

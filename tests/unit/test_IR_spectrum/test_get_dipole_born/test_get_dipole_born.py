@@ -10,8 +10,13 @@ FIXTURE_B = TEST_DIR / 'fixtures_b_born'
 class TestGetDipoleBorn(unittest.TestCase):
 
     def test_get_dipole_born_fixed_q(self):
-
+        born_dipole_out = FIXTURE_A / 'born_dipole.out'
+        self.addCleanup(born_dipole_out.unlink, missing_ok=True)
         dipoles = get_dipole_born(FIXTURE_A / 'in.yaml')
+        self.assertTrue(born_dipole_out.is_file())
+        np.testing.assert_allclose(
+            np.loadtxt(born_dipole_out)[:, 1:], dipoles, atol=5e-5
+        )
         dipole_lammps = np.loadtxt(FIXTURE_A / 'dipole_lammps.dat')
         diff = dipole_lammps[:, 1:] - dipoles 
         # align 1st values
@@ -30,4 +35,3 @@ class TestGetDipoleBorn(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
