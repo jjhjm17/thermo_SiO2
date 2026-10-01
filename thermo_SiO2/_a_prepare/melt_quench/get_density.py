@@ -25,7 +25,7 @@ def get_density_Al_SiO2(dump_file):
     return density  # g/cm^3
 
 
-def get_density():
+def get_density(calc_folder=calc_folder, num_seeds=num_seeds):
     """This function cleans calculation files."""
 
     os.chdir(calc_folder)
