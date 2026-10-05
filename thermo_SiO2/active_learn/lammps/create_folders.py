@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
 """This script creates folders and prepares jobs for the active learning, for
-lammps."""
+lammps.
+
+option 'variable_file', 'blanks', 'variables'
+ The option should be turned on only when the keyword are present. So here r(param, 'variable_file',
+  'in.file')
+  If there is no 'blanks' variable, then and no 'variables' variable, the code should work without
+  replacing blanks, without making errors.
+
+When the code is changed, previous input files, which are not tested, should work, as much as possible.
+Do not remove simply because it is not used in the current test files.
+
+Keep this documentaion as it is hand-written.
+"""
 import os
 import sys
 import shutil
@@ -61,37 +73,42 @@ def create_folders():
         shutil.copytree(template_folder_abs, calc_subfolder, symlinks=True)
         os.chdir(calc_subfolder)
 
-        if different_seeds:
-            if hasattr(param, 'variable_file'):
-                variable_file = param.variable_file
-            else:
-                variable_file = 'in.file'
-            with open(variable_file, 'r') as fin:
-                in_file_lines = fin.readlines()
-            seed = get_lammps_random_seed(rng)
-            # with open('in.file_new', 'w') as out_file:
-            #     for line in in_file_lines:
-            #         line = line.replace('xxxSEEDxxx', f'{seed}')
-            #         if hasattr(param, 'almtp'):
-            #             line = line.replace('xxx__almpt__xxx',
-            #                                 param.almtp)
-            #         out_file.write(line)
-            # os.remove('in.file')
-            # os.rename('in.file_new', 'in.file')
-            blanks = ['xxxSEEDxxx']
-            variables = [str(seed)]
-            if hasattr(param, 'almtp'):
-                blanks.append('xxx__almtp__xxx')
-                if param.almtp.startswith('/'):
-                    almtp_path = param.almtp
-                else:
-                    almtp_path = f'../../{param.almtp}'
-                variables.append(almtp_path)
-            if (hasattr(param, 'fill_blank_index') and
-                param.fill_blank_index):
-                blanks.append('xxx__index__xxx')
-                variables.append(f'{index_seed}')
-            fill_blanks(file=variable_file, blanks=blanks, variables=variables)
+        if hasattr(param, 'variable_file'):
+            variable_file = param.variable_file
+        elif os.path.isfile('in.file'):
+            variable_file = 'in.file'
+        else:
+            variable_file = None
+
+        if variable_file is not None:
+            blanks = []
+            variables = []
+
+            if hasattr(param, 'blanks') != hasattr(param, 'variables'):
+                raise ValueError("'blanks' and 'variables' must be defined together")
+            if hasattr(param, 'blanks'):
+                blanks.extend(param.blanks)
+                variables.extend(str(value) for value in param.variables)
+
+            if different_seeds:
+                seed = get_lammps_random_seed(rng)
+                blanks.append('xxxSEEDxxx')
+                variables.append(str(seed))
+                if hasattr(param, 'almtp'):
+                    blanks.append('xxx__almtp__xxx')
+                    if param.almtp.startswith('/'):
+                        almtp_path = param.almtp
+                    else:
+                        almtp_path = f'../../{param.almtp}'
+                    variables.append(almtp_path)
+                if (hasattr(param, 'fill_blank_index') and
+                    param.fill_blank_index):
+                    blanks.append('xxx__index__xxx')
+                    variables.append(f'{index_seed}')
+
+            if blanks or variables:
+                fill_blanks(file=variable_file, blanks=blanks,
+                            variables=variables)
 
         # shutil.copy(f'../../hole_datafs/lammps.dataf_{index_seed}',
         #         'lammps.dataf')
