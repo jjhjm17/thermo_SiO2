@@ -264,6 +264,9 @@ def makeInputForVasp():
             
             nbands = int(np.ceil(nbands))
             fill_blanks('INCAR', blanks=['xxx__NBANDS__xxx'], variables=[f'{nbands}  # NELECT / 2 + NIONS / 4'])
+        if hasattr(param, 'set_magmom_value'):
+            magmom = param.set_magmom_value
+            fill_blanks('INCAR', blanks=['xxx__MAGMOM__xxx'], variables=[f'{num_atoms} * {magmom}'])
 
         if (hasattr(param, 'preconverge') and param.preconverge):
             # if os.path.isfile('../../template/INCAR.preconverge.change'):
