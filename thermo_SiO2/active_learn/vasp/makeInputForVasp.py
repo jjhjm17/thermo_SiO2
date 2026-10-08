@@ -264,20 +264,14 @@ def makeInputForVasp():
             
             nbands = int(np.ceil(nbands))
             fill_blanks('INCAR', blanks=['xxx__NBANDS__xxx'], variables=[f'{nbands}  # NELECT / 2 + NIONS / 4'])
-        if hasattr(param, 'set_magmom_value'):
-            magmom = param.set_magmom_value
-            fill_blanks('INCAR', blanks=['xxx__MAGMOM__xxx'], variables=[f'{num_atoms}*{magmom}'])
-            # no space before and after '*'
-
+        incar_files = ['INCAR']
         if (hasattr(param, 'preconverge') and param.preconverge):
-            # if os.path.isfile('../../template/INCAR.preconverge.change'):
             if os.path.isfile(f'../../{template_dir}/INCAR.preconverge.change'):
-                # shutil.copy('../../template/INCAR.preconverge.change', '.')
                 shutil.copy(f'../../{template_dir}/INCAR.preconverge.change', '.')
-            # elif os.path.isfile('../../template/INCAR.preconverge'):
+                incar_files.append('INCAR.preconverge.change')
             elif os.path.isfile(f'../../{template_dir}/INCAR.preconverge'):
-                # shutil.copy('../../template/INCAR.preconverge', '.')
                 shutil.copy(f'../../{template_dir}/INCAR.preconverge', '.')
+                incar_files.append('INCAR.preconverge')
                 if hasattr(param, 'nbands_less') and param.nbands_less:
                     fill_blanks('INCAR.preconverge', blanks=['xxx__NBANDS__xxx'],
                                 variables=[f'{nbands}  # NELECT / 2 + NIONS / 4'])
@@ -285,6 +279,13 @@ def makeInputForVasp():
                 print('Error: INCAR.preconverge.change or INCAR.preconverge '
                       'are not found.')
                 sys.exit()
+
+        if hasattr(param, 'set_magmom_value'):
+            magmom = param.set_magmom_value
+            for incar_file in incar_files:
+                fill_blanks(incar_file, blanks=['xxx__MAGMOM__xxx'], variables=[f'{num_atoms}*{magmom}'])
+            # no space before and after '*'
+
 
         # os.symlink('../../template/POTCAR', 'POTCAR')
 
