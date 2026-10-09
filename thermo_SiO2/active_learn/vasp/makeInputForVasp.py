@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
-"""This script makes folder for vasp input."""
+"""This script makes folder for vasp input.
+
+
+set_magmom_value = 3  # some defects have 2 bohr, and we start with 2 * 1.5
+magmom_random_sign = True  # random of given set_magmom_value:  3 3 -3 3 -3...
+magmom_seed = 123   # random seed is magmom_seed * i_structure
+
+magmom max characters in line : around 100 characters with line change character
+
+
+Keep this comment block because it is hand-written.
+"""
 
 import os
 import sys
 import shutil
 import subprocess
+from textwrap import wrap
 from pathlib import Path
 from collections import Counter
 import numpy as np
@@ -282,9 +294,18 @@ def makeInputForVasp():
 
         if hasattr(param, 'set_magmom_value'):
             magmom = param.set_magmom_value
+            if getattr(param, 'magmom_random_sign', False):
+                rng = np.random.default_rng(param.magmom_seed * i_structure)
+                signs = rng.choice((-1, 1), size=num_atoms)
+                magmom_values = [str(magmom * int(sign)) for sign in signs]
+                magmom_text = ' \\\n         '.join(
+                    wrap(' '.join(magmom_values), width=80,
+                         break_long_words=False, break_on_hyphens=False))
+            else:
+                magmom_text = f'{num_atoms}*{magmom}'  # no spaces around '*'
             for incar_file in incar_files:
-                fill_blanks(incar_file, blanks=['xxx__MAGMOM__xxx'], variables=[f'{num_atoms}*{magmom}'])
-            # no space before and after '*'
+                fill_blanks(incar_file, blanks=['xxx__MAGMOM__xxx'],
+                            variables=[magmom_text])
 
 
         # os.symlink('../../template/POTCAR', 'POTCAR')
