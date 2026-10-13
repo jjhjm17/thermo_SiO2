@@ -152,6 +152,8 @@ def main(argv=None):
     reasons = Counter()
     for index in range(first, last + 1):
         folder = root / f"{index:04d}"
+        if index % 20 == 0:
+            print(f'{index = }')
         source = folder
         if not (folder / "OUTCAR").exists() and (folder / "unconverged").is_dir():
             source = folder / "unconverged"
