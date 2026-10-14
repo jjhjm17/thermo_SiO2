@@ -28,6 +28,7 @@ import re
 import tempfile
 
 import parameters as param
+from .makeInputForVasp import get_atoms_and_forces
 
 
 SCF_ITERATION = re.compile(r"\bIteration\s+\d+\(\s*\d+\)")
@@ -162,6 +163,10 @@ def main(argv=None):
         parser.error("parameters.py must define start_config_number and end_config_number")
     if first < 0 or last < first:
         parser.error("invalid configuration number range")
+    config_count = len(get_atoms_and_forces(param))
+    if last >= config_count:
+        print(f"Skipping indexes {max(first, config_count)}-{last} beyond the {config_count} configurations in the input file")
+        last = config_count - 1
 
     selected = []
     reasons = Counter()
@@ -182,7 +187,7 @@ def main(argv=None):
 
     write_atomic(args.output, (f"{name}\n" for name, _ in selected))
     write_atomic(args.report, (f"path\treason\n", *(f"{name}\t{reason}\n" for name, reason in selected)))
-    print(f"Checked {last - first + 1} calculations in {root}")
+    print(f"Checked {max(0, last - first + 1)} calculations in {root}")
     print(f"Selected {len(selected)} for rerun: {args.output}")
     print(f"Reasons: {args.report}")
     for reason, count in sorted(reasons.items()):

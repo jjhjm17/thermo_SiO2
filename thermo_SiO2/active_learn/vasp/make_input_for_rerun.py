@@ -10,6 +10,9 @@ Then move the content of the folder to subfolder './unconverged'.
 Do similar to makeInputForVasp.py, but first do not make new folder.
 Copy input files, change blanks, make joblist, and prepare for the next submission.
 
+Read template from template_dir of parameters.py file like ./makeInputForVasp.py
+Check only folder indexes which are in the mlip file.
+
 Keep the above comment as it is hand-written. Additional comments can be added below.
 """
 
@@ -31,14 +34,14 @@ from .get_unconverged import write_atomic
 from .makeInputForVasp import get_atoms_and_forces, unique_ordered_list
 
 
-TEMPLATE = Path("template_e_algo_all")
 ZVAL = re.compile(r"\bZVAL\s*=\s*([+-]?\d+(?:\.\d+)?)")
 
 
-def read_targets(list_file, calc_root):
-    """Accept only numbered calculation directories in the selected root."""
+def read_targets(list_file, calc_root, config_count):
+    """Accept listed directories whose indexes exist in the configuration file."""
     targets = []
     seen = set()
+    skipped = 0
     with list_file.open(encoding="utf-8") as stream:
         for line_number, line in enumerate(stream, 1):
             name = line.strip()
@@ -53,6 +56,9 @@ def read_targets(list_file, calc_root):
                 raise ValueError(f"{list_file}:{line_number}: folder is outside {calc_root}: {name}")
             if not param.start_config_number <= index <= param.end_config_number:
                 raise ValueError(f"{list_file}:{line_number}: index is outside the selected range: {name}")
+            if index >= config_count:
+                skipped += 1
+                continue
             if folder in seen:
                 raise ValueError(f"{list_file}:{line_number}: duplicate folder: {name}")
             if not folder.is_dir():
@@ -67,7 +73,7 @@ def read_targets(list_file, calc_root):
                     raise ValueError(f"{folder}: existing unconverged/ archive needs review")
             seen.add(folder)
             targets.append((index, folder, prepared))
-    return targets
+    return targets, skipped
 
 
 def potcars_for(atoms, potential_root):
@@ -193,16 +199,19 @@ def main(argv=None):
     if not args.list.is_file():
         parser.error(f"unconverged list does not exist: {args.list}")
     job_list = args.job_list or Path(f"jobList_rerun_{root.name}")
-    template = TEMPLATE.resolve()
+    template = Path(getattr(param, "template_dir", "template")).resolve()
     if not (template / "INCAR").is_file():
         parser.error(f"INCAR template does not exist: {template / 'INCAR'}")
     potential_root = Path(os.environ.get("pbepot", ""))
     if not os.environ.get("pbepot") or not potential_root.is_dir():
         parser.error("set $pbepot to the PBE POTCAR elements directory")
 
-    targets = read_targets(args.list, root)
+    atoms_and_forces = get_atoms_and_forces(param)
+    targets, skipped = read_targets(args.list, root, len(atoms_and_forces))
+    if skipped:
+        print(f"Skipped {skipped} list entries beyond the {len(atoms_and_forces)} configurations in the input file")
     if not targets:
-        print(f"No calculations listed in {args.list}; no inputs changed")
+        print(f"No eligible calculations listed in {args.list}; no inputs changed")
         return
     already_prepared = {folder for _, folder, prepared in targets if prepared}
     if job_list.exists():
@@ -212,11 +221,6 @@ def main(argv=None):
     new_targets = [(index, folder) for index, folder, prepared in targets if not prepared]
     print(f"Selected {len(targets)} calculations in {root}; "
           f"{len(already_prepared)} already prepared, {len(new_targets)} new")
-    if new_targets:
-        atoms_and_forces = get_atoms_and_forces(param)
-        if max(index for index, _ in new_targets) >= len(atoms_and_forces):
-            raise ValueError("unconverged list refers to an index beyond the configuration file")
-
     if args.dry_run:
         for folder in sorted(already_prepared):
             print(f"Already prepared {folder}")
