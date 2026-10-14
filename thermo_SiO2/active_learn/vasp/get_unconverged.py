@@ -2,8 +2,16 @@
 """This script obtains unconverged folder names after vasp calculations.
 
 We read parameters from parameters.py file like ./makeInputForVasp.py .
-We check if vasp*out file finished and if there is no mention that EDIFF was not reached, in both pre-convergence and the next step, if there is preconvergence.
-Otherwise, print out the folders in unconverged.txt
+
+1) If preconverge = True:
+
+    We check if vasp*out file finished and if there is no mention that EDIFF was not reached, in both pre-convergence and the next step.
+    Otherwise, print out the folders in unconverged.txt
+
+2) else preconverge = False:
+
+    We check if vasp*out file finished and if there is no mention that EDIFF was not reached, in the main step.
+
 
 The ALGO tag (algorithm) can be Fast, Normal or All. For Fast, we need to search for 'RMM', and 'Normal', DAV, and or 'All', search for CGA or SDA.
 So search for all these words.
@@ -41,7 +49,6 @@ PRECONVERGE_START = "We pre-converge WAVECAR at folder preconverge."
 MAIN_START = "We calculate by reading pre-converged WAVECAR."
 SCF_WARNING = "The electronic self-consistency was not achieved"
 FINAL_F = re.compile(r"^\s*\d+\s+F=")
-ELAPSED = "Elapsed time (sec):"
 JOB_FINISHED = ("Job Wall-clock time", "= Elapsed runtime")
 
 
@@ -93,8 +100,8 @@ def check_stdout(folder, preconverge):
     if len(files) != 1:
         return "ambiguous_vasp_stdout"
 
-    stages = {"preconvergence": {"scf": 0, "f": 0, "elapsed": 0, "warning": False},
-              "main": {"scf": 0, "f": 0, "elapsed": 0, "warning": False}}
+    stages = {"preconvergence": {"scf": 0, "f": 0, "warning": False},
+              "main": {"scf": 0, "f": 0, "warning": False}}
     stage = "preconvergence" if preconverge else "main"
     saw_preconvergence = saw_main = finished = False
     try:
@@ -109,8 +116,6 @@ def check_stdout(folder, preconverge):
                     stages[stage]["scf"] += 1
                 if FINAL_F.search(line):
                     stages[stage]["f"] += 1
-                if ELAPSED in line:
-                    stages[stage]["elapsed"] += 1
                 if SCF_WARNING in line or ("EDIFF" in line and "not reached" in line):
                     stages[stage]["warning"] = True
                 if any(marker in line for marker in JOB_FINISHED):
@@ -124,7 +129,7 @@ def check_stdout(folder, preconverge):
         result = stages[name]
         if result["warning"]:
             return f"{name}_not_converged"
-        if not result["scf"] or not result["f"] or not result["elapsed"]:
+        if not result["scf"] or not result["f"]:
             return f"incomplete_{name}_stdout"
     if not finished:
         return "incomplete_vasp_stdout"
