@@ -25,6 +25,9 @@ In Fritz: "= Job-ID             : 4325512 on fritz"
 In Alex: "= Job-ID             : 4545589 on alex"
 So you may use these lines to get server name.
 
+When there are many vasp*out files, take the one with the large number, which is more recent.
+Ex) vasp_4570208.out  vasp_4573003.out  -> use  vasp_4573003.out 
+
 Keep the above comment as it is hand-written. Additional comments can be added below.
 """
 
@@ -94,10 +97,23 @@ def check_stdout(folder, preconverge):
     within each run. Here the explicit VASP SCF warning distinguishes a run
     that reached NELM but still printed an F line.
     """
-    files = sorted(folder.glob("vasp*.out"))
+    files = list(folder.glob("vasp*.out"))
     if not files:
         return "missing_vasp_stdout"
-    if len(files) != 1:
+    numbered = []
+    for file in files:
+        match = re.fullmatch(r"vasp_(\d+)\.out", file.name)
+        if match:
+            numbered.append((int(match.group(1)), file))
+    if numbered:
+        highest_number = max(number for number, _ in numbered)
+        newest = [file for number, file in numbered if number == highest_number]
+        if len(newest) != 1:
+            return "ambiguous_vasp_stdout"
+        stdout = newest[0]
+    elif len(files) == 1:
+        stdout = files[0]
+    else:
         return "ambiguous_vasp_stdout"
 
     stages = {"preconvergence": {"scf": 0, "f": 0, "warning": False},
@@ -105,7 +121,7 @@ def check_stdout(folder, preconverge):
     stage = "preconvergence" if preconverge else "main"
     saw_preconvergence = saw_main = finished = False
     try:
-        with files[0].open(errors="replace") as stream:
+        with stdout.open(errors="replace") as stream:
             for line in stream:
                 if PRECONVERGE_START in line:
                     saw_preconvergence = True

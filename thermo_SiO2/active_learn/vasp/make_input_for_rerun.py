@@ -13,6 +13,9 @@ Copy input files, change blanks, make joblist, and prepare for the next submissi
 Read template from template_dir of parameters.py file like ./makeInputForVasp.py
 Check only folder indexes which are in the mlip file.
 
+If previous 'unconverged' folder exists, then remove it and make a new 'unconverged' folder.
+Print that previous 'unconverged' folder was removed.
+
 Keep the above comment as it is hand-written. Additional comments can be added below.
 """
 
@@ -64,13 +67,15 @@ def read_targets(list_file, calc_root, config_count):
             if not folder.is_dir():
                 raise ValueError(f"{list_file}:{line_number}: folder does not exist: {name}")
             archive = folder / "unconverged"
-            prepared = archive.is_dir() and not archive.is_symlink() and not (folder / "OUTCAR").exists()
-            if archive.exists() or archive.is_symlink():
+            has_archive = archive.exists() or archive.is_symlink()
+            if has_archive:
                 required = ("POSCAR", "POTCAR", "INCAR")
                 if getattr(param, "preconverge", False):
                     required += ("INCAR.preconverge",)
-                if not prepared or not all((folder / item).is_file() for item in required):
+                if (archive.is_symlink() or not archive.is_dir()
+                        or not all((folder / item).is_file() for item in required)):
                     raise ValueError(f"{folder}: existing unconverged/ archive needs review")
+            prepared = has_archive and not (folder / "OUTCAR").exists()
             seen.add(folder)
             targets.append((index, folder, prepared))
     return targets, skipped
@@ -152,14 +157,20 @@ def prepare_inputs(stage, destination, atoms, index, potential_root, template):
 
 
 def archive_and_install(folder, stage):
-    """Move originals into unconverged/ and roll back a failed folder move."""
+    """Replace the old archive, preserving it until the new inputs are installed."""
     archive = folder / "unconverged"
-    originals = list(folder.iterdir())
+    previous_archive = None
+    if archive.is_dir() and not archive.is_symlink():
+        previous_archive = stage.with_name(f"{stage.name}.previous_unconverged")
+        archive.rename(previous_archive)
     moved = []
     installed = []
     external_links = []
-    archive.mkdir()
+    archive_created = False
     try:
+        originals = list(folder.iterdir())
+        archive.mkdir()
+        archive_created = True
         for source in originals:
             original_link = os.readlink(source) if source.is_symlink() else None
             resolved = source.resolve() if original_link is not None else None
@@ -182,8 +193,12 @@ def archive_and_install(folder, stage):
             destination.symlink_to(original_link)
         for source, destination, _ in reversed(moved):
             destination.rename(source)
-        archive.rmdir()
+        if archive_created:
+            archive.rmdir()
+        if previous_archive is not None:
+            previous_archive.rename(archive)
         raise
+    return previous_archive
 
 
 def main(argv=None):
@@ -216,8 +231,12 @@ def main(argv=None):
     already_prepared = {folder for _, folder, prepared in targets if prepared}
     if job_list.exists():
         old_jobs = [Path(line).resolve() for line in job_list.read_text().splitlines() if line.strip()]
-        if len(old_jobs) != len(set(old_jobs)) or not set(old_jobs) <= already_prepared:
-            parser.error(f"existing job list does not match prepared reruns: {job_list}")
+        if (len(old_jobs) != len(set(old_jobs)) or any(
+            folder.parent != root or not folder.name.isdecimal()
+            or folder.name != f"{int(folder.name):04d}"
+            for folder in old_jobs
+        )):
+            parser.error(f"existing job list contains invalid calculation folders: {job_list}")
     new_targets = [(index, folder) for index, folder, prepared in targets if not prepared]
     print(f"Selected {len(targets)} calculations in {root}; "
           f"{len(already_prepared)} already prepared, {len(new_targets)} new")
@@ -228,6 +247,8 @@ def main(argv=None):
             atoms = atoms_and_forces[index]["atoms"]
             potcars_for(atoms, potential_root)
             magmom_for(index, atoms)
+            if (folder / "unconverged").is_dir():
+                print(f"Would remove previous unconverged folder: {folder / 'unconverged'}")
             print(f"Would prepare {folder}")
         print("Dry run complete; no inputs changed")
         return
@@ -243,8 +264,11 @@ def main(argv=None):
                         index, potential_root, template,
                     )
                 for _, folder in new_targets:
-                    archive_and_install(folder, staging / folder.name)
+                    previous_archive = archive_and_install(folder, staging / folder.name)
                     completed.add(folder)
+                    if previous_archive is not None:
+                        shutil.rmtree(previous_archive)
+                        print(f"Removed previous unconverged folder: {folder / 'unconverged'}")
                     print(f"Prepared {folder}")
     finally:
         if completed:
