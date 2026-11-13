@@ -172,6 +172,7 @@ def run_neb(
     n_max_steps=10000,
     repel_cutoff=0.8,
     debug_lj=False,
+    method='improvedtangent'
 ):
     """Run regular and climbing-image NEB and return the final ASE images.
 
@@ -195,6 +196,8 @@ def run_neb(
     ``k_spring`` is passed as ``k`` to both NEB stages; its default is
     0.1 eV/Ang^2. LJ repulsion always runs on intermediate images, preserving
     the original behavior of the unused first_repel variable.
+
+    kwargs: keyword arguments for the NEB class
     """
     for name, value, minimum in (
         ('n_images', n_images, 3),
@@ -274,7 +277,7 @@ def run_neb(
 
 
 
-        neb = NEB(images, k=k_spring, method='improvedtangent',
+        neb = NEB(images, k=k_spring, method=method,
                   allow_shared_calculator=True)
         # improvedtangent: default
         if interpolate_images:
@@ -374,7 +377,7 @@ def run_neb(
 
         # climbing image
         print('\nSetting up climbing NEB ...', flush=True)
-        nebClimb = NEB(images, k=k_spring, method='improvedtangent',
+        nebClimb = NEB(images, k=k_spring, method=method,
                        allow_shared_calculator=True, climb=True)
         # minimizer = FIRE(nebClimb, logfile='min.log', maxstep=0.05, dt=0.05)
         # minimizer = FIRE(nebClimb, logfile='min.log')

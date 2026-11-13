@@ -15,6 +15,7 @@ from ...mlip.read_mlip_cfg import read_mlip_cfg
 from ...mlip.read_mlip_cfg import read_mlip_cfg_mlippy
 # from mlippy.atms import loadcfgs, savecfgs
 # from ...mlip.read_mlip_cfg import set_atom_symbol
+from thermo_SiO2.active_learn.vasp.makeInputForVasp import get_atoms_and_forces
 from ...util.SiO2_parameter import Si_O_H_Al_atom_symbol_tuple_mlip
 if hasattr(param, 'added_train_cfg'):
     sys.path.insert(0, '../a.lammps')
@@ -31,15 +32,16 @@ def collect_cfg():
 
     # atoms = ase_loadcfgs(mlip_cfg_file)
     # set_atom_symbol(atoms, Si_O_H_Al_atom_symbol_tuple_mlip)
-    if hasattr(param, 'mlip_cfg_file'):
-        # atoms_and_forces = read_mlip_cfg(param.mlip_cfg_file,
-        #         atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip,
-        #         sort_method='POTCAR_order')
-        cfgs = read_mlip_cfg_mlippy(param.mlip_cfg_file,
-                atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
-        # here, Si_O_H_Al_atom_symbol_tuple_mlip is not used later.
+    # if hasattr(param, 'mlip_cfg_file'):
+    #     # atoms_and_forces = read_mlip_cfg(param.mlip_cfg_file,
+    #     #         atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip,
+    #     #         sort_method='POTCAR_order')
+    #     cfgs = read_mlip_cfg_mlippy(param.mlip_cfg_file,
+    #             atom_symbol_tuple=Si_O_H_Al_atom_symbol_tuple_mlip)
+    #     # here, Si_O_H_Al_atom_symbol_tuple_mlip is not used later.
 
-    # atoms_and_forces = get_atoms_and_forces(param)
+
+    cfgs = get_atoms_and_forces(param, return_cfgs=True)
 
     os.chdir(calc_folder)
 

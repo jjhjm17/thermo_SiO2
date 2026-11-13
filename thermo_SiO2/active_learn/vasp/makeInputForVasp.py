@@ -83,7 +83,11 @@ def sort_by_chemical_formula(atoms_and_forces):
     return atoms_and_forces
 
 
-def get_atoms_and_forces(param):
+def get_atoms_and_forces(param, return_cfgs=False):
+    """
+    return_cfgs: True: it returns configs (list of ase Atoms objects)
+        False: it returns atoms_and_forces
+    """
     atom_symbol_tuple = Atom_order(atom_symbols_in_output_cfg).atom_symbol_tuple_mlip()
     if hasattr(param, 'mlip_cfg_file'):
         # atoms_and_forces = read_mlip_cfg(param.mlip_cfg_file,
@@ -167,7 +171,10 @@ def get_atoms_and_forces(param):
     if (hasattr(param, 'sort_by_chemical_formula') and
         param.sort_by_chemical_formula):
         atoms_and_forces = sort_by_chemical_formula(atoms_and_forces)
-    return atoms_and_forces
+    if not return_cfgs:
+        return atoms_and_forces
+    else:
+        return configs
 
 
 def makeInputForVasp():
